@@ -18,13 +18,13 @@
 .card-region-select:focus{border-color:var(--blue)}
 
 /* --- Categorias Infinitas (Marquee) na Home --- */
-.home-marquee-wrap{position:relative;width:100%;overflow:hidden;padding:4px 0 16px;mask-image:linear-gradient(to right,transparent 0%,black 5%,black 95%,transparent 100%);-webkit-mask-image:linear-gradient(to right,transparent 0%,black 5%,black 95%,transparent 100%)}
-.home-marquee-track{display:flex;flex-wrap:nowrap;gap:10px;width:max-content;animation:marquee-scroll 9s ease-in-out infinite alternate;will-change:transform}
+.home-marquee-wrap{position:relative;width:100%;overflow:hidden;padding:4px 0 16px;mask-image:linear-gradient(to right,transparent 0%,black 4%,black 96%,transparent 100%);-webkit-mask-image:linear-gradient(to right,transparent 0%,black 4%,black 96%,transparent 100%)}
+.home-marquee-track{display:flex;flex-wrap:nowrap;gap:10px;width:max-content;animation:marquee-scroll 24s linear infinite;will-change:transform}
 .home-marquee-wrap:hover .home-marquee-track{animation-play-state:paused}
 .home-marquee-track .chip{flex-shrink:0;user-select:none}
 @keyframes marquee-scroll{
-  0%, 4% { transform: translateX(0); }
-  96%, 100% { transform: translateX(calc(-100% + min(900px, 100vw - 60px))); }
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
 }
 
 /* --- Hero Slot & Empty State Customization --- */
@@ -212,6 +212,11 @@
 
       for(const group of names){
         target.append(createChip(group, false));
+      }
+      if (home) {
+        for(const group of names){
+          target.append(createChip(group, true));
+        }
       }
     }
 
