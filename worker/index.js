@@ -110,12 +110,12 @@ async function prefetchSegment(url) {
 async function resolveStreamUrl(streamUrl, embedUrl) {
   if (embedUrl && streamUrlCache.has(embedUrl)) return streamUrlCache.get(embedUrl);
 
-  if (streamUrl && !streamUrl.includes('error.txt')) {
+  if (streamUrl) {
     try {
       const resp = await fetch(streamUrl, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
-          'Referer': 'https://multicanaishd.email/'
+          'Referer': 'https://embedtv.cc/'
         },
         signal: AbortSignal.timeout(4000)
       });
@@ -142,7 +142,7 @@ async function resolveStreamUrl(streamUrl, embedUrl) {
       });
       const html = await resp.text();
       const match = html.match(/const src\s*=\s*["']([^"'\s]+)["']/)?.[1];
-      if (match && !match.includes('akamaized.net') && !match.includes('error.txt')) {
+      if (match && !match.includes('akamaized.net')) {
         streamUrlCache.set(embedUrl, match);
         return match;
       }
@@ -155,7 +155,7 @@ async function resolveStreamUrl(streamUrl, embedUrl) {
           (c.id && c.id.toLowerCase() === slug) || 
           (c.page && c.page.toLowerCase().includes('/' + slug + '/'))
         );
-        if (matchChannel && matchChannel.stream && !matchChannel.stream.includes('error.txt')) {
+        if (matchChannel && matchChannel.stream) {
           return matchChannel.stream;
         }
       }
