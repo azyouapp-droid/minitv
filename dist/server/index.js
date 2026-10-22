@@ -67,7 +67,7 @@ const hostedHtml = pageHtml.replace(
 );
 const segmentCache = new Map();
 const activeFetches = new Map();
-const streamUrlCache = new Map();
+const streamUrlCache = new Map(); // key -> { url, expiresAt }
 
 async function prefetchSegment(url) {
   if (segmentCache.has(url)) return segmentCache.get(url);
@@ -107,22 +107,26 @@ async function prefetchSegment(url) {
   return fetchPromise;
 }
 
-async function resolveStreamUrl(streamUrl, embedUrl) {
-  if (embedUrl && streamUrlCache.has(embedUrl)) return streamUrlCache.get(embedUrl);
+async function resolveStreamUrl(streamUrl, embedUrl, forceFresh = false) {
+  if (!forceFresh && embedUrl && streamUrlCache.has(embedUrl)) {
+    const cached = streamUrlCache.get(embedUrl);
+    if (cached && cached.expiresAt > Date.now()) return cached.url;
+    streamUrlCache.delete(embedUrl);
+  }
 
-  if (streamUrl) {
+  if (streamUrl && !forceFresh) {
     try {
       const resp = await fetch(streamUrl, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
           'Referer': 'https://embedtv.cc/'
         },
-        signal: AbortSignal.timeout(4000)
+        signal: AbortSignal.timeout(3500)
       });
       if (resp.ok) {
         const text = await resp.text();
         if (text.startsWith('#EXTM3U')) {
-          if (embedUrl) streamUrlCache.set(embedUrl, streamUrl);
+          if (embedUrl) streamUrlCache.set(embedUrl, { url: streamUrl, expiresAt: Date.now() + 240000 });
           return streamUrl;
         }
       }
@@ -141,9 +145,10 @@ async function resolveStreamUrl(streamUrl, embedUrl) {
         signal: AbortSignal.timeout(6000)
       });
       const html = await resp.text();
-      const match = html.match(/const src\s*=\s*["']([^"'\s]+)["']/)?.[1];
+      const match = html.match(/const src\s*=\s*["']([^"'\s]+)["']/)?.[1] ||
+                    html.match(/src\s*[:=]\s*["']([^"'\s]+\.(?:txt|m3u8)[^"'\s]*)["']/i)?.[1];
       if (match && !match.includes('akamaized.net')) {
-        streamUrlCache.set(embedUrl, match);
+        streamUrlCache.set(embedUrl, { url: match, expiresAt: Date.now() + 240000 });
         return match;
       }
     } catch {}
@@ -184,21 +189,23 @@ async function handle(request, response) {
     'Referrer-Policy': 'strict-origin-when-cross-origin'
   };
 
-  // Protect against DoS / brute scraping: 180 requests per minute per IP
-  const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
-                   request.headers.get('cf-connecting-ip') || 'client';
-  if (clientIp !== 'client' && clientIp !== '127.0.0.1') {
-    const now = Date.now();
-    let entry = ipRequests.get(clientIp);
-    if (!entry || now - entry.resetTime > 60000) {
-      entry = { count: 1, resetTime: now };
-      ipRequests.set(clientIp, entry);
-    } else {
-      entry.count++;
-      if (entry.count > 240) {
-        response.writeHead(429, { ...baseHeaders, 'Content-Type': 'text/plain', 'Retry-After': '30' });
-        response.end('Too Many Requests');
-        return;
+  // Protect against DoS / brute scraping: 240 requests/min (exempt /segment to allow smooth video buffer)
+  if (path !== '/segment') {
+    const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
+                     request.headers.get('cf-connecting-ip') || 'client';
+    if (clientIp !== 'client' && clientIp !== '127.0.0.1' && clientIp !== '::1') {
+      const now = Date.now();
+      let entry = ipRequests.get(clientIp);
+      if (!entry || now - entry.resetTime > 60000) {
+        entry = { count: 1, resetTime: now };
+        ipRequests.set(clientIp, entry);
+      } else {
+        entry.count++;
+        if (entry.count > 240) {
+          response.writeHead(429, { ...baseHeaders, 'Content-Type': 'text/plain', 'Retry-After': '30' });
+          response.end('Too Many Requests');
+          return;
+        }
       }
     }
   }
@@ -208,7 +215,7 @@ async function handle(request, response) {
   const referer = request.headers.get('referer');
   const host = request.headers.get('host') || '';
   if (path === '/m3u8' || path === '/proxy-player') {
-    if (origin && !origin.includes(host) && !origin.includes('localhost') && !origin.includes('vercel.app')) {
+    if (origin && !origin.includes(host) && !origin.includes('localhost') && !origin.includes('127.0.0.1') && !origin.includes('vercel.app')) {
       response.writeHead(403, { ...baseHeaders, 'Content-Type': 'text/plain' });
       response.end('Forbidden');
       return;
@@ -233,7 +240,11 @@ async function handle(request, response) {
   if (path === '/m3u8') {
     const rawStream = urlObj.searchParams.get('url');
     const embedUrl = urlObj.searchParams.get('embed');
-    const streamTarget = await resolveStreamUrl(rawStream, embedUrl);
+    const forceFresh = urlObj.searchParams.has('_fresh') || urlObj.searchParams.has('_r') || urlObj.searchParams.has('_w');
+    let streamTarget = await resolveStreamUrl(rawStream, embedUrl, forceFresh);
+    if (!streamTarget && embedUrl) {
+      streamTarget = await resolveStreamUrl(null, embedUrl, true);
+    }
 
     if (!streamTarget) {
       response.writeHead(404, { 'Access-Control-Allow-Origin': '*' });
@@ -246,13 +257,32 @@ async function handle(request, response) {
       let resp = await fetch(streamTarget, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
-          'Referer': 'https://multicanaishd.email/'
+          'Referer': 'https://embedtv.cc/'
         },
         signal: AbortSignal.timeout(8000)
-      });
+      }).catch(() => null);
 
-      if (!resp.ok) {
-        response.writeHead(resp.status, { 'Access-Control-Allow-Origin': '*' });
+      // If initial target failed (e.g. 404 or expired token), force-refresh live embed page once
+      if (!resp || !resp.ok) {
+        if (embedUrl) {
+          streamUrlCache.delete(embedUrl);
+          const freshTarget = await resolveStreamUrl(null, embedUrl, true);
+          if (freshTarget && freshTarget !== streamTarget) {
+            streamTarget = freshTarget;
+            targetBase = freshTarget;
+            resp = await fetch(streamTarget, {
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
+                'Referer': 'https://embedtv.cc/'
+              },
+              signal: AbortSignal.timeout(8000)
+            }).catch(() => null);
+          }
+        }
+      }
+
+      if (!resp || !resp.ok) {
+        response.writeHead(resp?.status || 502, { 'Access-Control-Allow-Origin': '*' });
         response.end('Stream error');
         return;
       }
@@ -267,7 +297,7 @@ async function handle(request, response) {
           const childResp = await fetch(targetBase, {
             headers: {
               'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-              'Referer': 'https://multicanaishd.email/'
+              'Referer': 'https://embedtv.cc/'
             },
             signal: AbortSignal.timeout(6000)
           });
