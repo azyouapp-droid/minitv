@@ -108,12 +108,17 @@ async function prefetchSegment(url) {
 }
 
 async function resolveStreamUrl(streamUrl, embedUrl) {
-  if (streamUrl && !streamUrl.includes('error.txt')) return streamUrl;
   if (embedUrl && streamUrlCache.has(embedUrl)) return streamUrlCache.get(embedUrl);
 
   if (streamUrl) {
     try {
-      const resp = await fetch(streamUrl, { signal: AbortSignal.timeout(5000) });
+      const resp = await fetch(streamUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
+          'Referer': 'https://multicanaishd.email/'
+        },
+        signal: AbortSignal.timeout(4000)
+      });
       if (resp.ok) {
         const text = await resp.text();
         if (text.startsWith('#EXTM3U')) {
@@ -126,7 +131,8 @@ async function resolveStreamUrl(streamUrl, embedUrl) {
 
   if (embedUrl) {
     try {
-      const resp = await fetch(embedUrl, {
+      const directEmbed = embedUrl.replace(/\.lat\//, '.cc/');
+      const resp = await fetch(directEmbed, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
           'Referer': 'https://multicanaishd.email/'
@@ -135,7 +141,7 @@ async function resolveStreamUrl(streamUrl, embedUrl) {
         signal: AbortSignal.timeout(6000)
       });
       const html = await resp.text();
-      const match = html.match(/const src\s*=\s*"(https:\/\/[^"\s]+)"/)?.[1];
+      const match = html.match(/const src\s*=\s*["']([^"'\s]+)["']/)?.[1];
       if (match) {
         streamUrlCache.set(embedUrl, match);
         return match;
@@ -150,7 +156,7 @@ async function handle(request, response) {
   const path = urlObj.pathname;
   if(path === '/category-art.png'){response.writeHead(200,{'Content-Type':'image/png','Cache-Control':'public,max-age=86400'});response.end(Uint8Array.from(atob(categoryArt),c=>c.charCodeAt(0)));return;}
 
-  // 1. M3U8 Playlist Proxy with Background Pre-fetching of upcoming segments
+  // 1. M3U8 Playlist Proxy with Master Playlist Unwrapping & Direct CDN Segments
   if (path === '/m3u8') {
     const rawStream = urlObj.searchParams.get('url');
     const embedUrl = urlObj.searchParams.get('embed');
@@ -163,9 +169,10 @@ async function handle(request, response) {
     }
 
     try {
-      const resp = await fetch(streamTarget, {
+      let targetBase = streamTarget;
+      let resp = await fetch(streamTarget, {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
           'Referer': 'https://multicanaishd.email/'
         },
         signal: AbortSignal.timeout(8000)
@@ -178,15 +185,33 @@ async function handle(request, response) {
       }
 
       let playlistText = await resp.text();
-      const originalSegments = [...playlistText.matchAll(/https:\/\/[^\r\n]+/g)].map(m => m[0]);
 
-      // Proactively prefetch all upcoming segments into RAM:
-      // Segments are fetched on demand to fit hosted memory limits.
+      // If it is a master playlist, follow down to the active media playlist:
+      if (playlistText.includes('#EXT-X-STREAM-INF')) {
+        const childLine = playlistText.split('\n').find(l => l.trim() && !l.startsWith('#'))?.trim();
+        if (childLine) {
+          targetBase = new URL(childLine, streamTarget).href;
+          const childResp = await fetch(targetBase, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+              'Referer': 'https://multicanaishd.email/'
+            },
+            signal: AbortSignal.timeout(6000)
+          });
+          if (childResp.ok) {
+            playlistText = await childResp.text();
+          }
+        }
+      }
 
-      // Rewrite URLs to local /segment
-      playlistText = playlistText.replace(/(https:\/\/[^\r\n]+)/g, (segmentMatch) => {
-        return `/segment?url=${encodeURIComponent(segmentMatch)}`;
+      // Convert all segment lines to absolute CDN URLs (which already have Access-Control-Allow-Origin: *):
+      const lines = playlistText.split(/\r?\n/);
+      const rewritten = lines.map(line => {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) return line;
+        return new URL(trimmed, targetBase).href;
       });
+      playlistText = rewritten.join('\n');
 
       response.writeHead(200, {
         'Content-Type': 'application/vnd.apple.mpegurl',
@@ -201,7 +226,7 @@ async function handle(request, response) {
     return;
   }
 
-  // 2. Ultra-Fast Segment Delivery from in-memory cache
+  // 2. Segment Delivery Fallback
   if (path === '/segment') {
     const segmentUrl = urlObj.searchParams.get('url');
     if (!segmentUrl) {
@@ -209,28 +234,27 @@ async function handle(request, response) {
       response.end('Missing segment url');
       return;
     }
-
-    let buffer = segmentCache.get(segmentUrl);
-
-    if (!buffer && activeFetches.has(segmentUrl)) {
-      buffer = await activeFetches.get(segmentUrl);
-    }
-
-    if (!buffer) {
-      buffer = await prefetchSegment(segmentUrl);
-    }
-
-    if (buffer) {
-      response.writeHead(200, {
-        'Content-Type': 'video/mp2t',
-        'Access-Control-Allow-Origin': '*',
-        'Cache-Control': 'public, max-age=86400'
+    try {
+      const resp = await fetch(segmentUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
+          'Referer': 'https://2bfad4ae2dde88266a221a51b1c9bbeb.embedtv.cc/'
+        },
+        signal: AbortSignal.timeout(10000)
       });
-      response.end(buffer);
-    } else {
-      response.writeHead(503, { 'Access-Control-Allow-Origin': '*' });
-      response.end();
-    }
+      if (resp.ok) {
+        const buf = new Uint8Array(await resp.arrayBuffer());
+        response.writeHead(200, {
+          'Content-Type': 'video/mp2t',
+          'Access-Control-Allow-Origin': '*',
+          'Cache-Control': 'public, max-age=86400'
+        });
+        response.end(buf);
+        return;
+      }
+    } catch {}
+    response.writeHead(503, { 'Access-Control-Allow-Origin': '*' });
+    response.end();
     return;
   }
 
