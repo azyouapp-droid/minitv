@@ -39,7 +39,7 @@
       if (/globo news|band news|cnn brasil|record news/.test(n)) return 'Notícias';
       if (/espn|sportv|sporttv|sportynet|sporty|premiere|cazetv|combate|ufc|xsports|band sports|eleven|benfica tv|canal 11|a bola|prime video [234]/.test(n)) return 'Esportes';
       if (/^(globo |record |sbt |band |cultura|rede tv)/.test(n) || /^(globo|record|sbt|band|cultura)$/.test(n)) return 'Canais abertos';
-      if (/gloob|discovery kids|cartoon|cartoonito|24h.*(naruto|pica pau|dragon ball|chaves)|disney/.test(n)) return 'Infantil';
+      if (/gloob|discovery kids|cartoon|cartoonito|nickelodeon|nick|24h.*(naruto|pica pau|dragon ball|chaves)|disney/.test(n)) return 'Infantil';
       if (/telecine|hbo|max -|cinemax|megapix|tnt|warner|universal|paramount|sony channel|star channel|studio universal|prime video|space|tcm|ae|amc|axn|adult swim|24h/.test(n)) return 'Filmes e séries';
       if (/aparecida|canção nova|pai eterno|rede vida/.test(n)) return 'Religião';
       if (/discovery|animal planet|national geographic|nat geo/.test(n)) return 'Natureza';
