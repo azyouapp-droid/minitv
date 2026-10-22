@@ -22,6 +22,10 @@
     {
       "source": "/refresh",
       "destination": "/api/index"
+    },
+    {
+      "source": "/events",
+      "destination": "/api/index"
     }
   ]
 }
