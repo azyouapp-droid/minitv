@@ -21,6 +21,5 @@
       "source": "/refresh",
       "destination": "/api/index"
     }
-  ],
-  "ignoreCommand": "exit 0"
+  ]
 }
