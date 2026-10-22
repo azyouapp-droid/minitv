@@ -1,20 +1,26 @@
 {
+  "functions": {
+    "api/index.js": {
+      "maxDuration": 30
+    }
+  },
   "rewrites": [
     {
       "source": "/m3u8",
-      "destination": "/api"
+      "destination": "/api/index"
     },
     {
       "source": "/segment",
-      "destination": "/api"
+      "destination": "/api/index"
     },
     {
       "source": "/proxy-player",
-      "destination": "/api"
+      "destination": "/api/index"
     },
     {
       "source": "/refresh",
-      "destination": "/api"
+      "destination": "/api/index"
     }
-  ]
+  ],
+  "ignoreCommand": "exit 0"
 }
