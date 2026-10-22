@@ -1,0 +1,12 @@
+{
+  "channels": [
+    {
+      "id": "canal-exemplo",
+      "sourceUrl": "https://fornecedor.example/canal/index.m3u8"
+    }
+  ],
+  "maxActiveChannels": 8,
+  "idleSeconds": 120,
+  "startupSeconds": 20,
+  "staleSeconds": 35
+}

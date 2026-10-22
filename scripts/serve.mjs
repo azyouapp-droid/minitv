@@ -1,0 +1,4 @@
+import http from 'node:http';
+import app from '../worker/index.js';
+const port=Number(process.env.PORT||8790);
+http.createServer(async(req,res)=>{try{const chunks=[];for await(const c of req)chunks.push(c);const request=new Request('http://localhost:'+port+req.url,{method:req.method,headers:req.headers,...(!['GET','HEAD'].includes(req.method)?{body:Buffer.concat(chunks)}:{})});const response=await app.fetch(request);res.writeHead(response.status,Object.fromEntries(response.headers));res.end(Buffer.from(await response.arrayBuffer()));}catch{res.writeHead(500);res.end('Erro ao carregar.');}}).listen(port,'127.0.0.1',()=>console.log('Mini TV: http://localhost:'+port));
