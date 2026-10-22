@@ -923,9 +923,8 @@
             if (video.paused || video.readyState < 3) {
               if (spinner) {
                 spinner.style.display = 'flex';
-                spinnerText.textContent = 'Bufferizando sinal...';
+                spinnerText.textContent = 'Conectando...';
               }
-              $('status').textContent = `Bufferizando...`;
             }
           }, 1000);
         };
