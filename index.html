@@ -88,9 +88,37 @@
     const artOf=c=>{const g=categoryOf(c);return g==='Esportes'||g==='Jogos de hoje'?'sports':g==='Infantil'?'kids':g==='Filmes e séries'?'movies':g==='Notícias'?'news':g==='Natureza'?(/animal/.test(c.name.toLowerCase())?'jungle':'nature'):'movies';};
     const initial=c=>c.name.split(/\s+/).slice(0,2).map(w=>w[0]).join('');
     function persist(){try{localStorage.setItem('minitv-favorites',JSON.stringify([...saved]));}catch{}}
-    function favorite(c){if(saved.has(key(c)))saved.delete(key(c));else saved.add(key(c));persist();render();}
-    function setMode(mode){view=mode;$('app').dataset.mode=selected&&mode==='favorites'?'explore':mode;$('app').classList.remove('mode-enter');requestAnimationFrame(()=>$('app').classList.add('mode-enter'));}
-    function navigate(mode){$('search').value='';$('category').value='all';if(document.fullscreenElement){setMode(mode==='favorites'?'favorites':'explore');wakeHud();}else setMode(selected&&mode==='channels'?'explore':mode);render();}
+    function setMode(mode){
+      view=mode;
+      if (mode === 'home') {
+        $('app').dataset.mode = 'home';
+      } else if (mode === 'favorites') {
+        $('app').dataset.mode = selected ? 'explore' : 'favorites';
+      } else if (mode === 'channels') {
+        $('app').dataset.mode = selected ? 'explore' : 'channels';
+      } else {
+        $('app').dataset.mode = mode;
+      }
+      $('app').classList.remove('mode-enter');
+      requestAnimationFrame(()=>$('app').classList.add('mode-enter'));
+    }
+
+    function navigate(mode){
+      $('search').value='';
+      $('category').value='all';
+      if(document.fullscreenElement){
+        if (mode === 'home') {
+          try { document.exitFullscreen(); } catch {}
+          setMode('home');
+        } else {
+          setMode(mode==='favorites'?'favorites':'explore');
+          wakeHud();
+        }
+      } else {
+        setMode(mode);
+      }
+      render();
+    }
     function refreshCategories(){const current=$('category').value;const present=new Set(channels.map(categoryOf));if(liveEvents.length>0)present.add('Jogos de hoje');$('category').replaceChildren(new Option('Todos','all'));for(const name of categories)if(present.has(name))$('category').add(new Option(name,name));$('category').value=present.has(current)?current:'all';}
     function renderChips(target,home=false){
       const present=categories.filter(g=>(g==='Jogos de hoje'&&liveEvents.length>0)||channels.some(c=>categoryOf(c)===g));
@@ -240,7 +268,7 @@
       if(!filtered.length && wanted !== 'Jogos de hoje'){
         const p=document.createElement('p');
         p.className='empty';
-        p.textContent=view==='favorites'?'Salve seus canais no coração. Eles ficam aqui.':channels.length?'Nenhum canal encontrado. Tente outra busca.':'Carregando canais…';
+        p.textContent=view==='favorites'?'Você ainda não favoritou nenhum canal. Toque no coração ♡ de qualquer canal para salvá-lo aqui.':channels.length?'Nenhum canal encontrado. Tente outra busca.':'Carregando canais…';
         $('channels').append(p);
       }
 
@@ -500,8 +528,103 @@
       }
       search();
     }
-    function dialog(title,text){$('dialog-title').textContent=title;$('dialog-body').textContent=text;$('dialog').showModal();}
-    if($('profile'))$('profile').onclick=()=>document.querySelector('[data-view="settings"]').click();$('brand').onclick=e=>{e.preventDefault();navigate('home');};$('nav-search').onclick=toggleFullscreenBrowse;if($('top-search'))$('top-search').onclick=search;$('all-channels').onclick=()=>navigate('channels');$('explore').onclick=()=>navigate('explore');$('back').onclick=()=>navigate('explore');$('current-fav').onclick=()=>{if(selected)favorite(selected);};$('close-dialog').onclick=()=>$('dialog').close();
+    function dialog(title, content, isHtml = false){
+      $('dialog-title').textContent = title;
+      if (isHtml) {
+        $('dialog-body').innerHTML = content;
+      } else {
+        $('dialog-body').textContent = content;
+      }
+      $('dialog').showModal();
+    }
+
+    function showNotifications() {
+      const liveCount = liveEvents.filter(e => {
+        const s = e.time_start ? new Date(e.time_start).getTime() : 0;
+        const now = Date.now();
+        return s && s <= now && now <= (s + 7200000);
+      }).length;
+
+      let html = `<p style="line-height:1.6;color:#557393;margin:0 0 16px">Tudo funcionando perfeitamente na sua Mini TV!</p>`;
+      if (liveCount > 0) {
+        html += `<div style="padding:12px;background:#f0f7ff;border:1.5px solid #cce4ff;border-radius:14px;margin-bottom:14px;font-size:13px;color:#0369a1">
+          ⚽ <strong>${liveCount} jogo(s) ao vivo agora!</strong> Confira a lista na categoria <em>Jogos de hoje</em>.
+        </div>`;
+      }
+      html += `<div style="font-size:13px;line-height:1.6;color:#334155">
+        <p style="margin:0 0 8px">✓ Guia EPG com programação em tempo real atualizada.</p>
+        <p style="margin:0 0 8px">✓ ${channels.length} canais sintonizados com sinal direto sem travas.</p>
+        <p style="margin:0">✓ Salve seus canais favoritos tocando no ícone de coração <strong>♡</strong>.</p>
+      </div>`;
+      dialog('Notificações', html, true);
+    }
+
+    function showSettings() {
+      const favCount = saved.size;
+      const html = `
+        <div style="font-size:13px;line-height:1.6;color:#334155;margin-bottom:20px">
+          <p style="margin:0 0 8px"><strong>Mini TV</strong> · Versão 2.0 (Interface Moderna)</p>
+          <p style="margin:0 0 8px">📺 Canais disponíveis: <strong>${channels.length}</strong></p>
+          <p style="margin:0 0 8px">⭐ Canais favoritados: <strong>${favCount}</strong></p>
+          <p style="margin:0;color:#64748b">Dica: Toque duas vezes no vídeo ou pressione <strong>F</strong> para entrar no modo Tela Cheia.</p>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <button class="primary" id="btn-sync-catalog" style="width:100%;padding:12px;font-weight:700">↻ Atualizar lista de canais</button>
+          ${favCount > 0 ? '<button class="text-button" id="btn-clear-favs" style="color:#ef4444;padding:10px;font-weight:600">🗑 Limpar todos os favoritos</button>' : ''}
+        </div>
+      `;
+      dialog('Configurações', html, true);
+
+      const syncBtn = $('btn-sync-catalog');
+      if (syncBtn) {
+        syncBtn.onclick = () => {
+          $('dialog').close();
+          $('reload').click();
+        };
+      }
+      const clearBtn = $('btn-clear-favs');
+      if (clearBtn) {
+        clearBtn.onclick = () => {
+          if (confirm('Deseja realmente remover todos os canais salvos dos seus favoritos?')) {
+            saved.clear();
+            persist();
+            render();
+            $('dialog').close();
+          }
+        };
+      }
+    }
+
+    // Botões de navegação da navbar inferior
+    document.querySelectorAll('.bottom-nav [data-view]').forEach(btn => {
+      btn.onclick = () => {
+        const v = btn.dataset.view;
+        if (v === 'home') {
+          navigate('home');
+        } else if (v === 'favorites') {
+          navigate('favorites');
+        } else if (v === 'notifications') {
+          showNotifications();
+        } else if (v === 'settings') {
+          showSettings();
+        }
+      };
+    });
+
+    $('brand').onclick = e => { e.preventDefault(); navigate('home'); };
+    $('nav-search').onclick = toggleFullscreenBrowse;
+    if ($('top-search')) $('top-search').onclick = search;
+    $('all-channels').onclick = () => navigate('channels');
+    $('explore').onclick = () => navigate('explore');
+    $('back').onclick = () => { if (view === 'live') navigate('explore'); else navigate('home'); };
+    $('current-fav').onclick = () => { if (selected) favorite(selected); };
+    $('close-dialog').onclick = () => $('dialog').close();
+    $('dialog').addEventListener('click', e => {
+      const rect = $('dialog').getBoundingClientRect();
+      if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) {
+        $('dialog').close();
+      }
+    });
 
     let watchdogTimer = null;
     let usingProxyStream = false;
