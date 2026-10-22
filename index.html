@@ -11,6 +11,12 @@
 .browse,.watch-panel,.home-panel{min-width:0}.app[data-mode="explore"] main{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .chip svg{flex-shrink:0;width:17px;height:17px;stroke-width:1.8}.chip span{line-height:1.15}@media(max-width:360px){.chip{gap:5px;padding-left:8px;padding-right:8px}.chip svg{width:15px;height:15px}.channel-thumb{width:86px}.channel-card{gap:9px}.channel-card h3{font-size:15px}}
 
+/* --- Seletor de Região / Variações nos Cards --- */
+.card-variants{display:flex;align-items:center;gap:6px;margin:2px 0 6px;min-height:30px}
+.card-region-label{font-size:11px;font-weight:700;color:var(--muted);white-space:nowrap}
+.card-region-select{flex:1;min-width:0;background:#f0f5fa;color:var(--ink);border:1.5px solid #dbe6f2;border-radius:12px;padding:4px 8px;font-size:11px;font-weight:700;outline:none;cursor:pointer;transition:border-color .2s}
+.card-region-select:focus{border-color:var(--blue)}
+
 /* --- Categorias Infinitas (Marquee) na Home --- */
 .home-marquee-wrap{position:relative;width:100%;overflow:hidden;padding:4px 0 16px;mask-image:linear-gradient(to right,transparent 0%,black 5%,black 95%,transparent 100%);-webkit-mask-image:linear-gradient(to right,transparent 0%,black 5%,black 95%,transparent 100%)}
 .home-marquee-track{display:flex;flex-wrap:nowrap;gap:10px;width:max-content;animation:marquee-scroll 22s ease-in-out infinite alternate;will-change:transform}
@@ -212,19 +218,19 @@
     function render(){
       const term=$('search').value.toLocaleLowerCase('pt-BR').trim(),wanted=$('category').value;
       const filtered=channels.filter(c=>(view!=='favorites'||saved.has(key(c)))&&c.name.toLocaleLowerCase('pt-BR').includes(term)&&(wanted==='all'||categoryOf(c)===wanted));
-      const eventMatches = (view!=='favorites' && (wanted==='all'||wanted==='Jogos de hoje')) ? liveEvents.filter(ev => {
+      const eventMatches = (view!=='favorites' && wanted==='Jogos de hoje') ? liveEvents.filter(ev => {
         if(!term) return true;
         const s = ((ev.title||'')+' '+(ev.league?.name||'')+' '+(ev.teams?.home?.name||'')+' '+(ev.teams?.away?.name||'')).toLowerCase();
         return s.includes(term);
       }) : [];
 
-      const totalCount = filtered.length + (wanted==='Jogos de hoje' ? eventMatches.length : (wanted==='all' ? eventMatches.length : 0));
+      const totalCount = filtered.length + (wanted==='Jogos de hoje' ? eventMatches.length : 0);
       $('count').textContent = totalCount + (totalCount===1 ? ' canal/evento' : ' canais');
       $('browse-title').textContent = view==='favorites' ? 'Seus favoritos' : selected ? 'Escolha o próximo canal' : 'Canais';
       renderChips($('chips'));renderChips($('home-chips'),true);$('channels').replaceChildren();
 
       // Renderizar Jogos de Hoje se houver
-      if (eventMatches.length > 0 && (wanted==='all' || wanted==='Jogos de hoje')) {
+      if (eventMatches.length > 0 && wanted==='Jogos de hoje') {
         const evHeading = document.createElement('h2');
         evHeading.className = 'group-title';
         evHeading.textContent = '⚽ Jogos de hoje';
@@ -346,41 +352,64 @@
         $('channels').append(p);
       }
 
+      const regionalRegex = /^(.+?)\s+(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)$/i;
+
       for(const group of categories){
         if(group === 'Jogos de hoje') continue;
-        const items=filtered.filter(c=>categoryOf(c)===group).sort((a,b)=>a.name.localeCompare(b.name,'pt-BR',{numeric:true}));
-        if(!items.length)continue;
+        const rawItems=filtered.filter(c=>categoryOf(c)===group);
+        if(!rawItems.length)continue;
+
+        // Agrupamento inteligente de canais regionais (ex: Globo RJ, Globo SP -> card único Globo com seletor de praça)
+        const groupsMap = new Map();
+        for (const ch of rawItems) {
+          const m = ch.name.match(regionalRegex);
+          if (m && m[1]) {
+            const base = m[1].trim();
+            const reg = m[2].toUpperCase();
+            if (!groupsMap.has(base)) groupsMap.set(base, { base, isGroup: true, variants: [] });
+            groupsMap.get(base).variants.push({ region: reg, channel: ch });
+          } else {
+            groupsMap.set(ch.name, { base: ch.name, isGroup: false, channel: ch });
+          }
+        }
+
+        const items = Array.from(groupsMap.values()).sort((a,b)=>a.base.localeCompare(b.base,'pt-BR',{numeric:true}));
         const heading=document.createElement('h2');
         heading.className='group-title';
         heading.textContent=group;
         $('channels').append(heading);
 
-        for(const c of items){
-          const active=selected&&key(c)===key(selected);
+        for(const item of items){
+          const isGroup = item.isGroup && item.variants.length > 1;
+          let currentCh = isGroup
+            ? (item.variants.find(v => selected && key(v.channel) === key(selected))?.channel || item.variants.find(v => v.region === 'SP')?.channel || item.variants.find(v => v.region === 'RJ')?.channel || item.variants[0].channel)
+            : (item.isGroup ? item.variants[0].channel : item.channel);
+
+          const isItemActive = () => selected && (isGroup ? item.variants.some(v => key(v.channel) === key(selected)) : key(currentCh) === key(selected));
+
           const card=document.createElement('article');
-          card.className='channel-card'+(active?' active':'');
+          card.className='channel-card'+(isItemActive()?' active':'');
           const thumb=document.createElement('div');
-          thumb.className='channel-thumb art art-'+artOf(c);
+          thumb.className='channel-thumb art art-'+artOf(currentCh);
           thumb.setAttribute('aria-hidden','true');
 
-          if (c.preview) {
-            const pImg = document.createElement('img');
-            pImg.src = c.preview;
-            pImg.className = 'card-preview-img';
-            pImg.alt = '';
-            pImg.loading = 'lazy';
-            pImg.onerror = () => pImg.remove();
-            thumb.append(pImg);
-          }
-          if (c.image) {
-            const logo = document.createElement('img');
-            logo.src = c.image;
-            logo.className = 'channel-logo';
-            logo.alt = c.name;
-            logo.loading = 'lazy';
-            logo.onerror = () => logo.remove();
-            thumb.append(logo);
-          }
+          const pImg = document.createElement('img');
+          pImg.className = 'card-preview-img';
+          pImg.alt = '';
+          pImg.loading = 'lazy';
+          if (currentCh.preview) pImg.src = currentCh.preview;
+          else pImg.style.display = 'none';
+          pImg.onerror = () => pImg.style.display = 'none';
+          thumb.append(pImg);
+
+          const logo = document.createElement('img');
+          logo.className = 'channel-logo';
+          logo.alt = item.base;
+          logo.loading = 'lazy';
+          if (currentCh.image) logo.src = currentCh.image;
+          else logo.style.display = 'none';
+          logo.onerror = () => logo.style.display = 'none';
+          thumb.append(logo);
 
           const content=document.createElement('div');
           content.className='card-content';
@@ -396,74 +425,130 @@
           meta.append(cat, live);
 
           const h = document.createElement('h3');
-          h.textContent = c.name;
+          h.textContent = item.base;
 
-          const epg = getEpgForChannel(c);
           const epgBox = document.createElement('div');
           epgBox.className = 'card-epg-box';
 
-          let timeText = '';
-          let progressPercent = 0;
-          if (epg && epg.current) {
-            const prog = document.createElement('p');
-            prog.className = 'card-epg-line';
-            prog.innerHTML = `<span class="card-epg-now">Agora:</span> <strong>${epg.current.title}</strong>`;
-            prog.title = epg.current.desc || epg.current.title;
-            epgBox.append(prog);
+          const updateEpgDisplay = (targetCh) => {
+            epgBox.replaceChildren();
+            const epg = getEpgForChannel(targetCh);
+            if (epg && epg.current) {
+              const prog = document.createElement('p');
+              prog.className = 'card-epg-line';
+              prog.innerHTML = `<span class="card-epg-now">Agora:</span> <strong>${epg.current.title}</strong>`;
+              prog.title = epg.current.desc || epg.current.title;
+              epgBox.append(prog);
 
-            if (epg.current.start_date) {
-              try {
-                const startD = new Date(epg.current.start_date);
-                const endD = epg.next?.start_date ? new Date(epg.next.start_date) : new Date(startD.getTime() + 3600000);
-                const fmt = d => d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-                timeText = `${fmt(startD)} – ${fmt(endD)}`;
-                const total = endD.getTime() - startD.getTime();
-                const done = Date.now() - startD.getTime();
-                progressPercent = Math.min(100, Math.max(8, (done / total) * 100));
-
-                const timeRow = document.createElement('div');
-                timeRow.className = 'card-prog-time';
-                timeRow.textContent = timeText;
-
-                const progTrack = document.createElement('div');
-                progTrack.className = 'card-prog-track';
-                const progFill = document.createElement('div');
-                progFill.className = 'card-prog-fill';
-                progFill.style.width = `${progressPercent}%`;
-                progTrack.append(progFill);
-
-                epgBox.append(timeRow, progTrack);
-              } catch(e) {}
+              if (epg.current.start_date) {
+                try {
+                  const startD = new Date(epg.current.start_date);
+                  const endD = epg.next?.start_date ? new Date(epg.next.start_date) : new Date(startD.getTime() + 3600000);
+                  const fmt = d => d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                  const timeRow = document.createElement('div');
+                  timeRow.className = 'card-prog-time';
+                  timeRow.textContent = `${fmt(startD)} – ${fmt(endD)}`;
+                  const total = endD.getTime() - startD.getTime();
+                  const done = Date.now() - startD.getTime();
+                  const progTrack = document.createElement('div');
+                  progTrack.className = 'card-prog-track';
+                  const progFill = document.createElement('div');
+                  progFill.className = 'card-prog-fill';
+                  progFill.style.width = `${Math.min(100, Math.max(8, (done / total) * 100))}%`;
+                  progTrack.append(progFill);
+                  epgBox.append(timeRow, progTrack);
+                } catch(e) {}
+              }
+            } else {
+              const desc = document.createElement('p');
+              desc.className = 'card-description';
+              desc.textContent = isItemActive() ? 'Assistindo agora' : 'Transmissão ao vivo';
+              epgBox.append(desc);
             }
-          } else {
-            const desc = document.createElement('p');
-            desc.className = 'card-description';
-            desc.textContent = active ? 'Assistindo agora' : 'Transmissão ao vivo';
-            epgBox.append(desc);
+          };
+
+          updateEpgDisplay(currentCh);
+
+          // Se tiver múltiplas praças/regiões, adiciona seletor compacto elegante
+          let variantSelect = null;
+          if (isGroup) {
+            const varWrap = document.createElement('div');
+            varWrap.className = 'card-variants';
+            const varLabel = document.createElement('span');
+            varLabel.className = 'card-region-label';
+            varLabel.textContent = 'Sinal:';
+            variantSelect = document.createElement('select');
+            variantSelect.className = 'card-region-select';
+            variantSelect.setAttribute('aria-label', 'Escolher região para ' + item.base);
+            item.variants.sort((a,b) => a.region.localeCompare(b.region)).forEach(v => {
+              const opt = document.createElement('option');
+              opt.value = v.region;
+              opt.textContent = `${v.region} · ${v.channel.name}`;
+              if (key(v.channel) === key(currentCh)) opt.selected = true;
+              variantSelect.append(opt);
+            });
+            varWrap.append(varLabel, variantSelect);
+            content.append(varWrap);
           }
 
           const actions = document.createElement('div');
           actions.className = 'card-actions';
 
           const play = document.createElement('button');
-          play.className = 'watch-btn' + (active ? ' active-btn' : '');
-          play.textContent = active ? 'Assistindo' : '▶ Assistir';
-          play.setAttribute('aria-label', (active ? 'Assistindo: ' : 'Assistir: ') + c.name);
+          const updatePlayBtn = () => {
+            const act = selected && key(currentCh) === key(selected);
+            card.classList.toggle('active', act);
+            play.className = 'watch-btn' + (act ? ' active-btn' : '');
+            play.textContent = act ? 'Assistindo' : '▶ Assistir';
+            play.setAttribute('aria-label', (act ? 'Assistindo: ' : 'Assistir: ') + currentCh.name);
+          };
+          updatePlayBtn();
+
           play.onclick = () => {
-            if (!active) playChannel(c);
+            const act = selected && key(currentCh) === key(selected);
+            if (!act) playChannel(currentCh);
             else if (!document.fullscreenElement) { setMode('live'); render(); }
             wakeHud();
           };
 
-          const fav = document.createElement('button');
-          fav.className = 'favorite-button' + (saved.has(key(c)) ? ' saved' : '');
-          fav.textContent = saved.has(key(c)) ? '♥' : '♡';
-          fav.setAttribute('aria-label', (saved.has(key(c)) ? 'Remover dos favoritos: ' : 'Favoritar: ') + c.name);
-          fav.setAttribute('aria-pressed', String(saved.has(key(c))));
-          fav.onclick = (e) => { e.stopPropagation(); favorite(c); };
+          const favBtn = document.createElement('button');
+          const updateFavBtn = () => {
+            const isFav = saved.has(key(currentCh));
+            favBtn.className = 'favorite-button' + (isFav ? ' saved' : '');
+            favBtn.textContent = isFav ? '♥' : '♡';
+            favBtn.setAttribute('aria-label', (isFav ? 'Remover dos favoritos: ' : 'Favoritar: ') + currentCh.name);
+            favBtn.setAttribute('aria-pressed', String(isFav));
+          };
+          updateFavBtn();
+          favBtn.onclick = (e) => {
+            e.stopPropagation();
+            favorite(currentCh);
+            updateFavBtn();
+          };
 
-          actions.append(play, fav);
+          if (variantSelect) {
+            variantSelect.onchange = (e) => {
+              e.stopPropagation();
+              const chosen = item.variants.find(v => v.region === variantSelect.value);
+              if (chosen) {
+                currentCh = chosen.channel;
+                thumb.className = 'channel-thumb art art-'+artOf(currentCh);
+                if (currentCh.image) {
+                  logo.src = currentCh.image;
+                  logo.style.display = 'block';
+                }
+                if (currentCh.preview) {
+                  pImg.src = currentCh.preview;
+                  pImg.style.display = 'block';
+                }
+                updateEpgDisplay(currentCh);
+                updatePlayBtn();
+                updateFavBtn();
+              }
+            };
+          }
 
+          actions.append(play, favBtn);
           content.append(meta, h, epgBox, actions);
           card.append(thumb, content);
           $('channels').append(card);
