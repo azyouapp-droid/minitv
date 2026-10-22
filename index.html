@@ -30,41 +30,49 @@
 /* --- Hero Slot & Empty State Customization --- */
 .home-hero-slot{position:relative;width:100%;border-radius:24px;overflow:hidden;box-shadow:0 12px 36px rgba(8,22,56,0.12);background:#071428;aspect-ratio:16/9;display:flex;align-items:stretch}
 .home-hero-slot .player-wrapper{width:100%;height:100%;border-radius:24px}
-.home-empty-hero{position:relative;width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;padding:34px 38px;border-radius:24px;background:#061426;color:#fff;overflow:hidden;box-sizing:border-box}
+.home-empty-hero{position:relative;width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;padding:34px 38px;border-radius:24px;background:radial-gradient(circle at 85% 25%, #113360 0%, #06152b 55%, #030a17 100%);color:#fff;overflow:hidden;box-sizing:border-box;cursor:pointer}
 .empty-hero-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.28;filter:saturate(1.15) brightness(0.9);pointer-events:none;z-index:0;transition:opacity .3s ease}
 .empty-hero-overlay{position:absolute;inset:0;background:linear-gradient(90deg,rgba(5,17,34,0.92) 0%,rgba(6,22,46,0.72) 55%,rgba(6,25,55,0.45) 100%);pointer-events:none;z-index:1}
-.empty-hero-glow{position:absolute;top:-40px;right:-40px;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle,rgba(8,123,255,0.45) 0%,rgba(8,123,255,0) 70%);pointer-events:none;filter:blur(22px);z-index:1}
-.empty-hero-content{position:relative;z-index:2;display:flex;flex-direction:column;gap:12px;max-width:540px}
+.empty-hero-glow{position:absolute;top:-40px;right:-40px;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(8,123,255,0.45) 0%,rgba(56,189,248,0.15) 50%,transparent 70%);pointer-events:none;filter:blur(25px);z-index:1}
+.empty-hero-glow-2{position:absolute;bottom:-60px;left:-40px;width:240px;height:240px;border-radius:50%;background:radial-gradient(circle,rgba(0,180,216,0.25) 0%,transparent 70%);pointer-events:none;filter:blur(30px);z-index:1}
+.empty-hero-content{position:relative;z-index:2;display:flex;flex-direction:column;gap:12px;max-width:560px}
 .empty-hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.12);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.18);padding:5px 12px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:0.4px;text-transform:uppercase;color:#8cd7ff;width:fit-content}
 .pulse-dot{width:7px;height:7px;border-radius:50%;background:#38bdf8;box-shadow:0 0 10px #38bdf8;animation:pulse-anim 2s infinite ease-in-out}
 @keyframes pulse-anim{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.4);opacity:.6}}
 .home-empty-hero h2{font-size:30px;font-weight:800;color:#fff;margin:0;letter-spacing:-0.5px;text-shadow:0 2px 8px rgba(0,0,0,0.4)}
 .home-empty-hero p{font-size:13px;line-height:1.55;color:#c0d8f0;margin:0;text-shadow:0 1px 4px rgba(0,0,0,0.35)}
-.empty-hero-actions{display:flex;align-items:center;margin-top:8px}
-.empty-hero-btn{display:inline-flex;align-items:center;gap:10px;background:linear-gradient(135deg,#087bff,#005ad4);color:#fff;border:none;border-radius:22px;padding:12px 26px;font-size:14px;font-weight:700;width:fit-content;box-shadow:0 8px 24px rgba(8,123,255,0.4);transition:all .2s ease}
+.empty-hero-actions{display:flex;align-items:center;margin-top:4px}
+.empty-hero-btn{display:inline-flex;align-items:center;gap:10px;background:linear-gradient(135deg,#087bff,#005ad4);color:#fff;border:none;border-radius:22px;padding:12px 26px;font-size:14px;font-weight:700;width:fit-content;box-shadow:0 8px 24px rgba(8,123,255,0.4);transition:all .2s ease;cursor:pointer}
 .empty-hero-btn:hover{transform:translateY(-2px);box-shadow:0 12px 28px rgba(8,123,255,0.55)}
 .empty-hero-btn svg{width:18px;height:18px;stroke:currentColor}
+.empty-hero-shortcuts{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:4px}
+.empty-shortcuts-label{font-size:11px;font-weight:700;color:#9ec7ea;text-transform:uppercase;letter-spacing:0.3px}
+.empty-tags{display:flex;flex-wrap:wrap;gap:6px}
+.empty-tag{background:rgba(255,255,255,0.09);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.16);color:#e0f0ff;border-radius:14px;padding:5px 12px;font-size:11px;font-weight:700;transition:all .2s ease;cursor:pointer}
+.empty-tag:hover{background:rgba(255,255,255,0.22);border-color:#38bdf8;color:#fff;transform:translateY(-1px)}
 
 /* Botão Parar Canal & Expandir */
 .stop-channel-btn{display:none;align-items:center;gap:6px;background:rgba(239,68,68,0.85);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.2);color:#fff;padding:6px 13px;border-radius:10px;font-size:12px;font-weight:700;transition:all .2s ease}
 .stop-channel-btn:hover{background:rgba(220,38,38,0.95);transform:scale(1.03)}
 .home-hero-slot .stop-channel-btn{display:inline-flex}
 .watch-player-slot .stop-channel-btn{display:inline-flex}
+.player-channel-tag{display:none;align-items:center;gap:6px;background:rgba(6,26,52,0.72);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.18);color:#fff;padding:6px 13px;border-radius:10px;font-size:12px;font-weight:700;max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.home-hero-slot .player-channel-tag{display:inline-flex}
 .home-hero-slot #back{display:none!important}
 .watch-player-slot #back{display:grid}
 .home-hero-slot #expand-channel{display:grid}
 .watch-player-slot #expand-channel{display:none}
 @media(min-width:1000px){.home-panel .home-hero-slot{grid-column:1;grid-row:2/7;min-height:360px}}
 @media(max-width:800px){.home-hero-slot{aspect-ratio:16/9}}
-@media(max-width:540px){.home-hero-slot{aspect-ratio:16/9;border-radius:18px}.home-empty-hero{padding:22px 20px}.home-empty-hero h2{font-size:22px}.home-empty-hero p{font-size:12px}.empty-hero-btn{padding:10px 18px;font-size:13px}}
+@media(max-width:540px){.home-hero-slot{aspect-ratio:16/9;border-radius:18px}.home-empty-hero{padding:22px 20px}.home-empty-hero h2{font-size:22px}.home-empty-hero p{font-size:12px}.empty-hero-btn{padding:10px 18px;font-size:13px}.empty-hero-shortcuts{display:none}}
 /* Adsterra Ads Styling */
 .ad-banner-wrap{display:flex;justify-content:center;align-items:center;margin:18px auto 8px;max-width:100%;overflow:hidden;border-radius:14px;min-height:90px}
 .ad-banner-wrap iframe{max-width:100%;border:0}
 .ad-native-wrap{margin:18px auto 14px;max-width:100%;min-height:90px;border-radius:16px;overflow:hidden}
 </style></head><body><div class="app" id="app" data-mode="home">
 <header><a class="brand" href="#" id="brand">mini<span>tv</span></a></header>
-<main><section class="home-panel" id="home-panel"><h1>Sua TV,<br>do seu jeito</h1><div class="home-marquee-wrap" id="home-marquee-wrap"><div class="home-marquee-track" id="home-chips"></div></div><div class="home-hero-slot" id="home-hero-slot"><div class="home-empty-hero" id="home-empty-hero"><img class="empty-hero-bg" src="/hero-collage.jpg" alt="Canais de TV" loading="eager" fetchpriority="high"><div class="empty-hero-overlay"></div><div class="empty-hero-glow"></div><div class="empty-hero-content"><div class="empty-hero-badge"><span class="pulse-dot"></span><span>Mini TV · Ao Vivo</span></div><h2>Pronto para assistir?</h2><p>Centenas de canais ao vivo de esportes, filmes, notícias e variedades disponíveis com transmissão contínua.</p><div class="empty-hero-actions"><button class="empty-hero-btn primary-glow" id="hero-explore-btn" aria-label="Escolher canal"><svg viewBox="0 0 24 24"><circle cx="10" cy="10" r="7"/><path d="m15 15 6 6"/></svg><span>Escolher um canal</span></button></div></div></div></div><div class="ad-banner-wrap"><script>atOptions = {'key' : '7731c0d0d2145b0b937f75c8719617f5','format' : 'iframe','height' : 90,'width' : 728,'params' : {}};</script><script src="https://czernik.org/22/7731c0d0d2145b0b937f75c8719617f5"></script></div></section>
-<section class="watch-panel"><div class="watch-player-slot" id="watch-player-slot"><div class="player-wrapper" id="player-wrapper"><video id="video" playsinline style="display:none"></video><div id="placeholder">Escolha um canal para começar</div><div id="player-spinner" class="player-spinner" style="display:none"><div class="spinner-ring"></div><span id="player-spinner-text">Sintonizando sinal...</span></div><div class="player-top"><button id="back" class="glass-button" aria-label="Voltar aos canais">‹</button><div style="display:flex;align-items:center;gap:8px"><button id="stop-channel" class="stop-channel-btn" aria-label="Parar transmissão"><svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:currentColor;stroke:none"><rect x="4" y="4" width="16" height="16" rx="2"/></svg><span>Parar</span></button><button id="expand-channel" class="glass-button" aria-label="Ver grade de canais" title="Ver grade de canais">▦</button><span class="live-badge">● AO VIVO</span></div></div><div class="player-controls"><div class="volume-control"><button id="mute" aria-label="Silenciar"><svg viewBox="0 0 24 24"><path d="M11 4 6 8H2v8h4l5 4Z"/><path id="sound-waves" d="M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/></svg></button><input id="volume" type="range" min="0" max="1" step="0.05" value="1" aria-label="Volume"></div><button id="fullscreen" class="glass-button" aria-label="Tela cheia"><svg viewBox="0 0 24 24"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></button></div></div></div><div id="now" class="now"></div><div class="channel-info-card"><div class="info-header"><div style="display:flex;align-items:center;gap:12px;min-width:0"><img id="player-channel-logo" class="player-channel-logo" style="display:none" alt="Logo"><div style="min-width:0"><span class="channel-type" id="channel-type">Ao vivo</span><h2 id="title" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Vamos assistir?</h2></div></div><button id="current-fav" class="favorite-button" aria-label="Favoritar canal atual">♡</button></div><div id="epg-details" class="epg-details" style="display:none"><div class="epg-details-header"><span>● Agora no canal</span></div><div class="epg-title" id="epg-prog-title"></div><p class="epg-desc" id="epg-prog-desc"></p><div class="epg-next" id="epg-next-box" style="display:none"><strong>A seguir:</strong> <span id="epg-prog-next"></span></div></div><span id="buffer-stat" hidden></span><p id="status" role="status" style="display:none"></p><div class="ad-native-wrap"><script async="async" data-cfasync="false" src="https://czernik.org/21/998cd5868ec62c8cb78f1b7d9dd396e5"></script><div id="container-998cd5868ec62c8cb78f1b7d9dd396e5"></div></div></div></section>
+<main><section class="home-panel" id="home-panel"><h1>Sua TV,<br>do seu jeito</h1><div class="home-marquee-wrap" id="home-marquee-wrap"><div class="home-marquee-track" id="home-chips"></div></div><div class="home-hero-slot" id="home-hero-slot"><div class="home-empty-hero" id="home-empty-hero"><img class="empty-hero-bg" src="/hero-collage.jpg" alt="Canais de TV" loading="eager" fetchpriority="high"><div class="empty-hero-overlay"></div><div class="empty-hero-glow"></div><div class="empty-hero-glow-2"></div><div class="empty-hero-content"><div class="empty-hero-badge"><span class="pulse-dot"></span><span>Mini TV · Ao Vivo</span></div><h2>Pronto para assistir?</h2><p>Centenas de canais ao vivo de esportes, filmes, notícias e variedades disponíveis com transmissão contínua.</p><div class="empty-hero-actions"><button class="empty-hero-btn primary-glow" id="hero-explore-btn" aria-label="Escolher canal"><svg viewBox="0 0 24 24"><circle cx="10" cy="10" r="7"/><path d="m15 15 6 6"/></svg><span>Escolher um canal</span></button></div><div class="empty-hero-shortcuts"><span class="empty-shortcuts-label">Atalhos:</span><div class="empty-tags"><button class="empty-tag" data-cat="Esportes">⚽ Esportes</button><button class="empty-tag" data-cat="Filmes e séries">🎬 Filmes</button><button class="empty-tag" data-cat="Canais abertos">📺 Abertos</button><button class="empty-tag" data-cat="Notícias">📰 Notícias</button></div></div></div></div></div><div class="ad-banner-wrap"><script>atOptions = {'key' : '7731c0d0d2145b0b937f75c8719617f5','format' : 'iframe','height' : 90,'width' : 728,'params' : {}};</script><script src="https://czernik.org/22/7731c0d0d2145b0b937f75c8719617f5"></script></div></section>
+<section class="watch-panel"><div class="watch-player-slot" id="watch-player-slot"><div class="player-wrapper" id="player-wrapper"><video id="video" playsinline style="display:none"></video><div id="placeholder">Escolha um canal para começar</div><div id="player-spinner" class="player-spinner" style="display:none"><div class="spinner-ring"></div><span id="player-spinner-text">Sintonizando sinal...</span></div><div class="player-top"><div style="display:flex;align-items:center;gap:8px"><button id="back" class="glass-button" aria-label="Voltar aos canais">‹</button><span id="player-top-channel-tag" class="player-channel-tag"></span></div><div style="display:flex;align-items:center;gap:8px"><button id="stop-channel" class="stop-channel-btn" aria-label="Parar transmissão"><svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:currentColor;stroke:none"><rect x="4" y="4" width="16" height="16" rx="2"/></svg><span>Parar</span></button><button id="expand-channel" class="glass-button" aria-label="Ver grade de canais" title="Ver grade de canais">▦</button><span class="live-badge">● AO VIVO</span></div></div><div class="player-controls"><div class="volume-control"><button id="mute" aria-label="Silenciar"><svg viewBox="0 0 24 24"><path d="M11 4 6 8H2v8h4l5 4Z"/><path id="sound-waves" d="M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/></svg></button><input id="volume" type="range" min="0" max="1" step="0.05" value="1" aria-label="Volume"></div><button id="fullscreen" class="glass-button" aria-label="Tela cheia"><svg viewBox="0 0 24 24"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></button></div></div></div><div id="now" class="now"></div><div class="channel-info-card"><div class="info-header"><div style="display:flex;align-items:center;gap:12px;min-width:0"><img id="player-channel-logo" class="player-channel-logo" style="display:none" alt="Logo"><div style="min-width:0"><span class="channel-type" id="channel-type">Ao vivo</span><h2 id="title" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Vamos assistir?</h2></div></div><button id="current-fav" class="favorite-button" aria-label="Favoritar canal atual">♡</button></div><div id="epg-details" class="epg-details" style="display:none"><div class="epg-details-header"><span>● Agora no canal</span></div><div class="epg-title" id="epg-prog-title"></div><p class="epg-desc" id="epg-prog-desc"></p><div class="epg-next" id="epg-next-box" style="display:none"><strong>A seguir:</strong> <span id="epg-prog-next"></span></div></div><span id="buffer-stat" hidden></span><p id="status" role="status" style="display:none"></p><div class="ad-native-wrap"><script async="async" data-cfasync="false" src="https://czernik.org/21/998cd5868ec62c8cb78f1b7d9dd396e5"></script><div id="container-998cd5868ec62c8cb78f1b7d9dd396e5"></div></div></div></section>
 <section class="browse" id="browse"><div class="section-row"><h1 id="browse-title">Canais</h1><span id="count"></span></div><div class="search-wrap"><svg viewBox="0 0 24 24"><circle cx="10" cy="10" r="7"/><path d="m15 15 6 6"/></svg><input id="search" type="search" placeholder="Buscar canal" aria-label="Buscar canal"></div><select id="category" hidden><option value="all">Todos</option></select><div id="chips" class="chips" aria-label="Categorias"></div><div id="channels" class="channel-grid"></div><p class="browse-hint">ⓘ &nbsp; O canal só muda ao tocar em Assistir.</p><button id="reload" class="text-button reload">↻ Atualizar canais</button></section></main>
 <nav class="bottom-nav" aria-label="Navegação principal"><button data-view="home" aria-label="Início"><svg viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v11h-6v-7H9v7H3Z"/></svg></button><button data-view="favorites" aria-label="Favoritos"><svg viewBox="0 0 24 24"><path d="M6 3h12v19l-6-4-6 4Z"/></svg></button><button id="nav-search" class="search-button" aria-label="Pesquisar canais"><svg viewBox="0 0 24 24"><circle cx="10" cy="10" r="7"/><path d="m15 15 6 6"/></svg></button><button data-view="notifications" aria-label="Notificações"><svg viewBox="0 0 24 24"><path d="M4 18h16l-2-4V9a6 6 0 0 0-12 0v5ZM9 21h6"/></svg></button><button data-view="settings" aria-label="Configurações"><svg viewBox="0 0 24 24"><path d="m9 3-1 3-3 1-2 3 2 2-1 4 3 2 3-1 2 4 3-1 1-3 4-1 1-3-3-2 1-4-3-2-3 1Z"/><circle cx="12" cy="12" r="3"/></svg></button></nav><dialog id="dialog"><button id="close-dialog" class="icon-button" aria-label="Fechar">×</button><h2 id="dialog-title"></h2><div id="dialog-body"></div></dialog></div><script src="https://cdn.jsdelivr.net/npm/hls.js@1.6.13/dist/hls.min.js"></script><script>    const $ = id => document.getElementById(id);
     let channels = [];
@@ -146,6 +154,11 @@
       const watchSlot = $('watch-player-slot');
       const emptyHero = $('home-empty-hero');
       if (!playerWrapper || !homeSlot || !watchSlot) return;
+
+      const tagNode = $('player-top-channel-tag');
+      if (tagNode) {
+        tagNode.textContent = selected ? selected.name : '';
+      }
 
       if (view === 'home') {
         if (selected) {
@@ -751,11 +764,26 @@
 
     if ($('stop-channel')) $('stop-channel').onclick = (e) => { e.stopPropagation(); stopPlayback(); };
     if ($('expand-channel')) $('expand-channel').onclick = (e) => { e.stopPropagation(); navigate('explore'); };
-    if ($('hero-explore-btn')) $('hero-explore-btn').onclick = () => navigate('channels');
+    if ($('hero-explore-btn')) $('hero-explore-btn').onclick = (e) => {
+      e.stopPropagation();
+      $('search').value = '';
+      $('category').value = 'all';
+      navigate('channels');
+    };
+    if ($('home-empty-hero')) {
+      $('home-empty-hero').onclick = (e) => {
+        if (e.target.closest('button')) return;
+        $('search').value = '';
+        $('category').value = 'all';
+        navigate('channels');
+      };
+    }
     document.querySelectorAll('.empty-tag').forEach(tag => {
-      tag.onclick = () => {
+      tag.onclick = (e) => {
+        e.stopPropagation();
         const cat = tag.dataset.cat || 'all';
         setMode('channels');
+        $('search').value = '';
         $('category').value = cat;
         render();
         wakeHud();
