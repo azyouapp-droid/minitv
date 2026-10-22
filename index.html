@@ -12,7 +12,7 @@
 .chip svg{flex-shrink:0;width:17px;height:17px;stroke-width:1.8}.chip span{line-height:1.15}@media(max-width:360px){.chip{gap:5px;padding-left:8px;padding-right:8px}.chip svg{width:15px;height:15px}.channel-thumb{width:86px}.channel-card{gap:9px}.channel-card h3{font-size:15px}}</style></head><body><div class="app" id="app" data-mode="home">
 <header><a class="brand" href="#" id="brand">mini<span>tv</span></a></header>
 <main><section class="home-panel" id="home-panel"><h1>Sua TV,<br>do seu jeito</h1><button class="hero art art-nature" id="hero-play" aria-label="Assistir canal em destaque"><span class="live-badge">● AO VIVO</span><span class="hero-caption"><strong id="hero-title">Natureza ao vivo</strong><small id="hero-subtitle">Escolha seu próximo favorito</small></span><span class="hero-play">▶</span></button><h2 class="small-heading">Categorias</h2><div id="home-chips" class="chips home-chips"></div><div class="section-row"><h2 class="small-heading" id="favorites-title">Seus favoritos</h2><button class="text-button" id="all-channels">Ver canais</button></div><div id="favorites-row" class="favorites-row"></div></section>
-<section class="watch-panel"><div class="player-wrapper" id="player-wrapper"><video id="video" playsinline style="display:none"></video><iframe id="player-frame" title="Transmissão do canal" allow="autoplay *; fullscreen *; encrypted-media *; picture-in-picture *" allowfullscreen style="display:none"></iframe><div id="placeholder">Escolha um canal para começar</div><div class="player-top"><button id="back" class="glass-button" aria-label="Voltar aos canais">‹</button><span class="live-badge">● AO VIVO</span></div><div class="player-controls"><div class="volume-control"><button id="mute" aria-label="Silenciar"><svg viewBox="0 0 24 24"><path d="M11 4 6 8H2v8h4l5 4Z"/><path id="sound-waves" d="M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/></svg></button><input id="volume" type="range" min="0" max="1" step="0.05" value="1" aria-label="Volume"></div><button id="fullscreen" class="glass-button" aria-label="Tela cheia"><svg viewBox="0 0 24 24"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></button></div></div><div id="now" class="now"></div><div class="channel-info-card"><div class="info-header"><div style="display:flex;align-items:center;gap:12px;min-width:0"><img id="player-channel-logo" class="player-channel-logo" style="display:none" alt="Logo"><div style="min-width:0"><span class="channel-type" id="channel-type">Ao vivo</span><h2 id="title" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Vamos assistir?</h2></div></div><button id="current-fav" class="favorite-button" aria-label="Favoritar canal atual">♡</button></div><div id="epg-details" class="epg-details" style="display:none"><div class="epg-details-header"><span>● Agora no canal</span></div><div class="epg-title" id="epg-prog-title"></div><p class="epg-desc" id="epg-prog-desc"></p><div class="epg-next" id="epg-next-box" style="display:none"><strong>A seguir:</strong> <span id="epg-prog-next"></span></div></div><span id="buffer-stat" hidden></span><p id="status" role="status"></p><div id="options" hidden></div><button class="primary explore-button" id="explore">▦ &nbsp; Explorar canais</button><div class="next-section"><h3>Mais para você</h3><div id="recommendation"></div></div></div></section>
+<section class="watch-panel"><div class="player-wrapper" id="player-wrapper"><video id="video" playsinline style="display:none"></video><div id="placeholder">Escolha um canal para começar</div><div class="player-top"><button id="back" class="glass-button" aria-label="Voltar aos canais">‹</button><span class="live-badge">● AO VIVO</span></div><div class="player-controls"><div class="volume-control"><button id="mute" aria-label="Silenciar"><svg viewBox="0 0 24 24"><path d="M11 4 6 8H2v8h4l5 4Z"/><path id="sound-waves" d="M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/></svg></button><input id="volume" type="range" min="0" max="1" step="0.05" value="1" aria-label="Volume"></div><button id="fullscreen" class="glass-button" aria-label="Tela cheia"><svg viewBox="0 0 24 24"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></button></div></div><div id="now" class="now"></div><div class="channel-info-card"><div class="info-header"><div style="display:flex;align-items:center;gap:12px;min-width:0"><img id="player-channel-logo" class="player-channel-logo" style="display:none" alt="Logo"><div style="min-width:0"><span class="channel-type" id="channel-type">Ao vivo</span><h2 id="title" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Vamos assistir?</h2></div></div><button id="current-fav" class="favorite-button" aria-label="Favoritar canal atual">♡</button></div><div id="epg-details" class="epg-details" style="display:none"><div class="epg-details-header"><span>● Agora no canal</span></div><div class="epg-title" id="epg-prog-title"></div><p class="epg-desc" id="epg-prog-desc"></p><div class="epg-next" id="epg-next-box" style="display:none"><strong>A seguir:</strong> <span id="epg-prog-next"></span></div></div><span id="buffer-stat" hidden></span><p id="status" role="status"></p><button class="primary explore-button" id="explore">▦ &nbsp; Explorar canais</button><div class="next-section"><h3>Mais para você</h3><div id="recommendation"></div></div></div></section>
 <section class="browse" id="browse"><div class="section-row"><h1 id="browse-title">Canais</h1><span id="count"></span></div><div class="search-wrap"><svg viewBox="0 0 24 24"><circle cx="10" cy="10" r="7"/><path d="m15 15 6 6"/></svg><input id="search" type="search" placeholder="Buscar canal" aria-label="Buscar canal"></div><select id="category" hidden><option value="all">Todos</option></select><div id="chips" class="chips" aria-label="Categorias"></div><div id="channels" class="channel-grid"></div><p class="browse-hint">ⓘ &nbsp; O canal só muda ao tocar em Assistir.</p><button id="reload" class="text-button reload">↻ Atualizar canais</button></section></main>
 <nav class="bottom-nav" aria-label="Navegação principal"><button data-view="home" aria-label="Início"><svg viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v11h-6v-7H9v7H3Z"/></svg></button><button data-view="favorites" aria-label="Favoritos"><svg viewBox="0 0 24 24"><path d="M6 3h12v19l-6-4-6 4Z"/></svg></button><button id="nav-search" class="search-button" aria-label="Pesquisar canais"><svg viewBox="0 0 24 24"><circle cx="10" cy="10" r="7"/><path d="m15 15 6 6"/></svg></button><button data-view="notifications" aria-label="Notificações"><svg viewBox="0 0 24 24"><path d="M4 18h16l-2-4V9a6 6 0 0 0-12 0v5ZM9 21h6"/></svg></button><button data-view="settings" aria-label="Configurações"><svg viewBox="0 0 24 24"><path d="m9 3-1 3-3 1-2 3 2 2-1 4 3 2 3-1 2 4 3-1 1-3 4-1 1-3-3-2 1-4-3-2-3 1Z"/><circle cx="12" cy="12" r="3"/></svg></button></nav><dialog id="dialog"><button id="close-dialog" class="icon-button" aria-label="Fechar">×</button><h2 id="dialog-title"></h2><div id="dialog-body"></div></dialog></div><script src="https://cdn.jsdelivr.net/npm/hls.js@1.6.13/dist/hls.min.js"></script><script>    const $ = id => document.getElementById(id);
     let channels = [];
@@ -442,6 +442,7 @@
         const nowLogo = selected.image ? `<img src="${selected.image}" class="now-logo" alt="">` : '';
         $('now').innerHTML = `<div class="now-strip-content">${nowLogo}<strong>${selected.name}</strong><span class="now-bullet">•</span><span class="now-status">Assistindo agora</span></div>`;
         $('channel-type').textContent=selected.isEvent ? 'Evento Esportivo' : categoryOf(selected);
+        $('title').textContent=selected.name;
 
         const logoNode = $('player-channel-logo');
         if (logoNode) {
@@ -523,15 +524,10 @@
       search();
     }
     function dialog(title,text){$('dialog-title').textContent=title;$('dialog-body').textContent=text;$('dialog').showModal();}
-    document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{const dest=b.dataset.view;if(dest==='notifications'){dialog('Notificações','Você não tem novas notificações.');return;}if(dest==='settings'){dialog('Sua Mini TV','Os favoritos ficam salvos neste navegador. Use o controle no vídeo para ajustar o volume e entrar em tela cheia. As imagens dos cards ilustram as categorias.');return;}navigate(dest);});
     if($('profile'))$('profile').onclick=()=>document.querySelector('[data-view="settings"]').click();$('brand').onclick=e=>{e.preventDefault();navigate('home');};$('nav-search').onclick=toggleFullscreenBrowse;if($('top-search'))$('top-search').onclick=search;$('all-channels').onclick=()=>navigate('channels');$('explore').onclick=()=>navigate('explore');$('back').onclick=()=>navigate('explore');$('current-fav').onclick=()=>{if(selected)favorite(selected);};$('close-dialog').onclick=()=>$('dialog').close();
 
-    async function playChannel(c, mode = 'auto', embedIndex = 0) {
-      if (typeof mode === 'number') {
-        embedIndex = mode;
-        mode = 'auto';
-      }
-      if(document.fullscreenElement){
+    async function playChannel(c) {
+      if (document.fullscreenElement) {
         $('app').classList.remove('browse-open');
       }
       selected = c;
@@ -540,11 +536,9 @@
 
       $('placeholder').style.display = 'none';
       $('title').textContent = c.name;
-      $('options').removeAttribute('hidden');
-      $('options').replaceChildren();
 
       const video = $('video');
-      const frame = $('player-frame');
+      video.style.display = 'block';
 
       if (bufferMonitor) clearInterval(bufferMonitor);
       $('buffer-stat').style.display = 'none';
@@ -554,64 +548,28 @@
         hls = null;
       }
 
-      const embedUrl = c.embeds?.[embedIndex]?.url || c.embeds?.[0]?.url || (c.url || '');
-      const streamUrl = c.stream || '';
+      // Desbloqueia vídeo no mesmo ciclo do clique do usuário
+      video.pause();
+      video.removeAttribute('src');
+      video.load();
 
-      const shouldUseEmbed = mode === 'embed' || c.isEvent || !streamUrl;
-
-      if (shouldUseEmbed) {
-        video.pause();
-        video.style.display = 'none';
-        video.removeAttribute('src');
-
-        frame.style.display = 'block';
-        if (frame.src !== embedUrl) {
-          frame.src = embedUrl;
+      let streamUrl = c.stream || '';
+      if (!streamUrl && c.isEvent && c.embeds?.[0]?.url) {
+        const slug = (c.embeds[0].url || '').replace(/.*\/([^\/]+)$/, '$1').toLowerCase();
+        const matched = channels.find(ch => (ch.id && ch.id.toLowerCase() === slug) || (ch.page && ch.page.toLowerCase().includes('/' + slug + '/')));
+        if (matched?.stream) {
+          streamUrl = matched.stream;
+        } else {
+          streamUrl = `/m3u8?embed=${encodeURIComponent(c.embeds[0].url)}`;
         }
+      }
 
-        $('status').textContent = c.isEvent 
-          ? `Assistindo partida: ${c.name}` 
-          : `Assistindo ${c.name} (Player Web Oficial)`;
-
-        if (streamUrl && !c.isEvent) {
-          const directBtn = document.createElement('button');
-          directBtn.className = 'opt-btn';
-          directBtn.innerHTML = '⚡ Stream Nativo';
-          directBtn.onclick = () => playChannel(c, 'direct', embedIndex);
-          $('options').append(directBtn);
-        }
-
-        const embedActiveBtn = document.createElement('button');
-        embedActiveBtn.className = 'opt-btn active';
-        embedActiveBtn.innerHTML = '🔄 Player Web';
-        embedActiveBtn.onclick = () => playChannel(c, 'embed', embedIndex);
-        $('options').append(embedActiveBtn);
-
-        if (c.embeds && c.embeds.length > 1) {
-          c.embeds.forEach((emb, idx) => {
-            const btn = document.createElement('button');
-            btn.className = 'opt-btn' + (idx === embedIndex ? ' active' : '');
-            btn.textContent = emb.label || `Sinal ${idx + 1}`;
-            btn.onclick = () => playChannel(c, 'embed', idx);
-            $('options').append(btn);
-          });
-        }
-
-        const reloadBtn = document.createElement('button');
-        reloadBtn.className = 'opt-btn';
-        reloadBtn.innerHTML = '⚡ Recarregar';
-        reloadBtn.onclick = () => {
-          frame.src = 'about:blank';
-          setTimeout(() => { frame.src = embedUrl; }, 100);
-        };
-        $('options').append(reloadBtn);
+      if (!streamUrl) {
+        $('status').textContent = 'Sinal temporariamente indisponível para este canal.';
         return;
       }
 
-      // Modo Stream Direto
-      frame.style.display = 'none';
-      frame.src = 'about:blank';
-      video.style.display = 'block';
+      $('status').textContent = `Sintonizando ${c.name}...`;
 
       video.onclick = () => {
         if (document.fullscreenElement) {
@@ -626,72 +584,44 @@
         }
       };
 
-      video.pause();
-      video.removeAttribute('src');
-      video.load();
-
-      $('status').textContent = `Conectando transmissão de ${c.name}...`;
-
-      let fallbackTriggered = false;
-      const triggerFallback = () => {
-        if (fallbackTriggered) return;
-        fallbackTriggered = true;
-        console.warn('Alternando para Player Web Oficial para', c.name);
-        $('status').textContent = 'Stream direto indisponível. Alternando para o player web...';
-        playChannel(c, 'embed', embedIndex);
-      };
-
-      let fallbackTimeout = setTimeout(() => {
-        if (selected === c && video.paused && !video.currentTime) {
-          triggerFallback();
-        }
-      }, 5000);
-
-      const clearFallback = () => {
-        if (fallbackTimeout) {
-          clearTimeout(fallbackTimeout);
-          fallbackTimeout = null;
-        }
+      const startPlayback = () => {
+        video.play().then(() => {
+          $('status').textContent = `Assistindo ${c.name} (Ao Vivo)`;
+        }).catch(() => {
+          video.muted = true;
+          syncVolume();
+          video.play().then(() => {
+            $('status').textContent = `Assistindo ${c.name} (Toque no som para ativar áudio)`;
+          }).catch(() => {
+            $('status').textContent = `Toque no player para iniciar a transmissão.`;
+          });
+        });
       };
 
       if (window.Hls && Hls.isSupported()) {
         hls = new Hls({
           enableWorker: true,
-          lowLatencyMode: false,
-          maxLiveSyncPlaybackRate: 1.0,
+          lowLatencyMode: true,
           liveSyncDurationCount: 3,
-          liveMaxLatencyDurationCount: 6,
-          maxBufferLength: 25,
-          maxMaxBufferLength: 45,
-          backBufferLength: 15,
-          maxBufferSize: 60 * 1024 * 1024,
-          highBufferWatchdogPeriod: 2,
-          nudgeOffset: 0.2,
-          nudgeMaxRetry: 5,
-          fragLoadingTimeOut: 10000,
-          fragLoadingMaxRetry: 3,
-          manifestLoadingTimeOut: 8000,
-          manifestLoadingMaxRetry: 3
+          maxBufferLength: 30,
+          maxMaxBufferLength: 60,
+          backBufferLength: 30,
+          manifestLoadingTimeOut: 10000,
+          manifestLoadingMaxRetry: 3,
+          levelLoadingTimeOut: 10000,
+          levelLoadingMaxRetry: 3,
+          fragLoadingTimeOut: 12000,
+          fragLoadingMaxRetry: 4
         });
 
         hls.loadSource(streamUrl);
         hls.attachMedia(video);
 
-        let playTriggered = false;
-        const startPlayback = () => {
-          clearFallback();
-          if (playTriggered) return;
-          playTriggered = true;
-          video.play().then(() => {
-            $('status').textContent = `Assistindo ${c.name} (Ao Vivo)`;
-          }).catch(() => {
-            $('status').textContent = `Clique no player de vídeo para iniciar.`;
-          });
-        };
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          startPlayback();
+        });
 
-        video.oncanplay = startPlayback;
         video.onplaying = () => {
-          clearFallback();
           $('status').textContent = `Assistindo ${c.name} (Ao Vivo)`;
         };
         video.onwaiting = () => {
@@ -717,46 +647,22 @@
 
         hls.on(Hls.Events.ERROR, (event, data) => {
           if (data.fatal) {
-            clearFallback();
             if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
               hls.recoverMediaError();
+            } else if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+              hls.startLoad();
             } else {
-              triggerFallback();
+              hls.destroy();
+              setTimeout(() => {
+                if (selected === c) playChannel(c);
+              }, 2500);
             }
           }
         });
-      } else {
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
         video.src = streamUrl;
-        video.play().catch(() => {});
+        startPlayback();
       }
-
-      const directActiveBtn = document.createElement('button');
-      directActiveBtn.className = 'opt-btn active';
-      directActiveBtn.innerHTML = '⚡ Stream Nativo';
-      directActiveBtn.onclick = () => playChannel(c, 'direct', embedIndex);
-      $('options').append(directActiveBtn);
-
-      const altEmbedBtn = document.createElement('button');
-      altEmbedBtn.className = 'opt-btn';
-      altEmbedBtn.innerHTML = '🔄 Player Web';
-      altEmbedBtn.onclick = () => playChannel(c, 'embed', embedIndex);
-      $('options').append(altEmbedBtn);
-
-      if (c.embeds && c.embeds.length > 1) {
-        c.embeds.forEach((emb, idx) => {
-          const btn = document.createElement('button');
-          btn.className = 'opt-btn';
-          btn.textContent = emb.label || `Sinal ${idx + 1}`;
-          btn.onclick = () => playChannel(c, 'embed', idx);
-          $('options').append(btn);
-        });
-      }
-
-      const reloadBtn = document.createElement('button');
-      reloadBtn.className = 'opt-btn';
-      reloadBtn.innerHTML = '⚡ Recarregar';
-      reloadBtn.onclick = () => playChannel(c, 'direct', embedIndex);
-      $('options').append(reloadBtn);
     }
 
     async function loadEPG() {
