@@ -5,8 +5,8 @@ async function syncEmbedTV() {
   const resp = await fetch('https://embedtv.cc/api/channels');
   if (!resp.ok) throw new Error('Failed to fetch channels API: ' + resp.status);
   const data = await resp.json();
-  const apiChannels = data.channels || [];
-  console.log(`Found ${apiChannels.length} official channels from EmbedTV.`);
+  const apiChannels = (data.channels || []).filter(c => !/playboy|sexyhot|adulto|xxx/i.test((c.id||'') + ' ' + (c.name||'')));
+  console.log(`Found ${apiChannels.length} family-safe official channels from EmbedTV.`);
 
   const catalogPath = 'public/multicanais-embed-catalog.json';
   const existingData = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));

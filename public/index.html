@@ -32,14 +32,12 @@
       'Variedades',
       'Notícias',
       'Religião',
-      'Adulto',
       'Outros'
     ];
 
     function categoryOf(c) {
       if (c.isEvent || c.category === 'Jogos de hoje') return 'Jogos de hoje';
       const n = (c.name || '').toLowerCase();
-      if (/sexy hot|play boy|adulto/.test(n)) return 'Adulto';
       if (/globo news|band news|cnn brasil|record news/.test(n)) return 'Notícias';
       if (/espn|sportv|sporttv|sportynet|sporty|premiere|cazetv|combate|ufc|xsports|band sports|eleven|benfica tv|canal 11|a bola|prime video [234]/.test(n)) return 'Esportes';
       if (/^(globo |record |sbt |band |cultura|rede tv)/.test(n) || /^(globo|record|sbt|band|cultura)$/.test(n)) return 'Canais abertos';
@@ -85,7 +83,7 @@
     let view='home', hudTimer, hudHover=false, lastPointer=0;
     let saved=new Set();try{saved=new Set(JSON.parse(localStorage.getItem('minitv-favorites')||'[]'));}catch{}
     const key=c=>c.page||c.name;
-    const icons={all:'▦','Jogos de hoje':'⚽','Canais abertos':'▣','Esportes':'⚽','Filmes e séries':'▤','Infantil':'☺','Natureza':'♧','Notícias':'▧','Variedades':'✦','Religião':'☼','Adulto':'◈','Outros':'▦'};
+    const icons={all:'▦','Jogos de hoje':'⚽','Canais abertos':'▣','Esportes':'⚽','Filmes e séries':'▤','Infantil':'☺','Natureza':'♧','Notícias':'▧','Variedades':'✦','Religião':'☼','Outros':'▦'};
     const shortLabel=g=>({'all':'Todos','Jogos de hoje':'Jogos','Filmes e séries':'Filmes','Canais abertos':'Abertos'}[g]||g);
     const artOf=c=>{const g=categoryOf(c);return g==='Esportes'||g==='Jogos de hoje'?'sports':g==='Infantil'?'kids':g==='Filmes e séries'?'movies':g==='Notícias'?'news':g==='Natureza'?(/animal/.test(c.name.toLowerCase())?'jungle':'nature'):'movies';};
     const initial=c=>c.name.split(/\s+/).slice(0,2).map(w=>w[0]).join('');
@@ -779,7 +777,7 @@
 
         const catalog = await response.json();
         const validChannels = (catalog.channels || [])
-          .filter(c => c.embeds?.length > 0 || c.stream)
+          .filter(c => (c.embeds?.length > 0 || c.stream) && !/playboy|sexyhot|adulto|xxx/i.test((c.id||'') + ' ' + (c.name||'')))
           .map(c => {
             return {
               ...c,
