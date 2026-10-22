@@ -1,4 +1,6 @@
 {
+  "buildCommand": "node scripts/build.mjs",
+  "outputDirectory": "public",
   "functions": {
     "api/index.js": {
       "maxDuration": 30
