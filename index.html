@@ -218,7 +218,7 @@
           const play = document.createElement('button');
           play.className = 'watch-btn';
           play.textContent = active ? 'Assistindo' : '▶ Assistir jogo';
-          play.onclick = () => { playChannel(pseudo, 'embed'); wakeHud(); };
+          play.onclick = () => { playChannel(pseudo); wakeHud(); };
           actions.append(play);
           content.append(actions);
 
@@ -418,10 +418,9 @@
     document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{const dest=b.dataset.view;if(dest==='notifications'){dialog('Notificações','Você não tem novas notificações.');return;}if(dest==='settings'){dialog('Sua Mini TV','Os favoritos ficam salvos neste navegador. Use o controle no vídeo para ajustar o volume e entrar em tela cheia. As imagens dos cards ilustram as categorias.');return;}navigate(dest);});
     $('profile').onclick=()=>document.querySelector('[data-view="settings"]').click();$('brand').onclick=e=>{e.preventDefault();navigate('home');};$('nav-search').onclick=search;$('top-search').onclick=search;$('all-channels').onclick=()=>navigate('channels');$('explore').onclick=()=>navigate('explore');$('back').onclick=()=>navigate('explore');$('current-fav').onclick=()=>{if(selected)favorite(selected);};$('close-dialog').onclick=()=>$('dialog').close();
 
-    async function playChannel(c, mode = 'direct', embedIndex = 0) {
-      if (c.isEvent) mode = 'embed';
+    async function playChannel(c, embedIndex = 0) {
       selected = c;
-      setMode(document.fullscreenElement?'explore':'live');
+      setMode(document.fullscreenElement ? 'explore' : 'live');
       render();
 
       $('placeholder').style.display = 'none';
@@ -431,6 +430,13 @@
       const video = $('video');
       const frame = $('player-frame');
 
+      // Garantir SEMPRE o player nativo <video> ativo e iframe desligado:
+      if (frame) {
+        frame.style.display = 'none';
+        frame.src = 'about:blank';
+      }
+      video.style.display = 'block';
+
       if (bufferMonitor) clearInterval(bufferMonitor);
       $('buffer-stat').style.display = 'none';
 
@@ -438,156 +444,117 @@
         hls.destroy();
         hls = null;
       }
-      video.onclick=()=>{if(document.fullscreenElement)wakeHud();else if(video.paused)video.play().catch(()=>{});};
+
+      video.onclick = () => {
+        if (document.fullscreenElement) wakeHud();
+        else if (video.paused) video.play().catch(() => {});
+      };
       video.pause();
       video.removeAttribute('src');
       video.load();
 
-      const embedUrl = c.embeds?.[embedIndex]?.url || c.embeds?.[0]?.url || '';
+      const embedUrl = c.embeds?.[embedIndex]?.url || c.embeds?.[0]?.url || (c.url || '');
+      const streamUrl = c.stream || '';
+      const proxiedM3u8 = c.ingestUrl || `/m3u8?url=${encodeURIComponent(streamUrl)}&embed=${encodeURIComponent(embedUrl)}`;
 
-      if (mode === 'direct' && !c.isEvent) {
-        frame.style.display = 'none';
-        frame.src = 'about:blank';
-        video.style.display = 'block';
-        $('status').textContent = `Conectando stream de ${c.name}...`;
+      $('status').textContent = `Conectando stream de ${c.name}...`;
 
-        let streamTarget = c.stream || '';
-        if (embedUrl) {
-          try {
-            const resp = await fetch(embedUrl, { signal: AbortSignal.timeout(3500) });
-            if (resp.ok) {
-              const html = await resp.text();
-              const match = html.match(/const src\s*=\s*"(https:\/\/[^"\s]+)"/)?.[1];
-              if (match && !match.includes('akamaized.net')) {
-                streamTarget = match;
-                c.stream = match;
-              }
-            }
-          } catch {}
-        }
+      if (window.Hls && Hls.isSupported()) {
+        hls = new Hls({
+          enableWorker: true,
+          lowLatencyMode: false,
+          maxLiveSyncPlaybackRate: 1.0,      // NUNCA acelerar reprodução para evitar esgotar buffer
+          liveSyncDurationCount: 3,         // 3 blocos de segurança (~18s da ponta)
+          liveMaxLatencyDurationCount: 6,
+          maxBufferLength: 25,              // Janela compatível de armazenamento de buffer
+          maxMaxBufferLength: 45,
+          backBufferLength: 15,
+          maxBufferSize: 60 * 1024 * 1024,  // 60MB de buffer
+          highBufferWatchdogPeriod: 2,
+          nudgeOffset: 0.2,
+          nudgeMaxRetry: 5,
+          fragLoadingTimeOut: 15000,
+          fragLoadingMaxRetry: 6,
+          manifestLoadingTimeOut: 10000,
+          manifestLoadingMaxRetry: 6
+        });
 
-        if (!streamTarget) {
-          $('status').textContent = 'Stream direto indisponível. Alternando para o player web...';
-          playChannel(c, 'embed', embedIndex);
-          return;
-        }
+        hls.loadSource(proxiedM3u8);
+        hls.attachMedia(video);
 
-        if (window.Hls && Hls.isSupported()) {
-          hls = new Hls({
-            enableWorker: false,
-            lowLatencyMode: false,
-            maxLiveSyncPlaybackRate: 1.0,      // NUNCA acelerar reprodução para evitar esgotar buffer
-            liveSyncDurationCount: 3,         // 3 blocos de segurança (~18s da ponta)
-            liveMaxLatencyDurationCount: 6,
-            maxBufferLength: 20,              // Janela compatível
-            maxMaxBufferLength: 30,
-            backBufferLength: 10,
-            maxBufferSize: 50 * 1024 * 1024,
-            highBufferWatchdogPeriod: 2,
-            nudgeOffset: 0.2,
-            nudgeMaxRetry: 5,
-            fragLoadingTimeOut: 15000,
-            fragLoadingMaxRetry: 6,
-            manifestLoadingTimeOut: 10000,
-            manifestLoadingMaxRetry: 6
-          });
-
-          hls.loadSource(streamTarget);
-          hls.attachMedia(video);
-
-          let playTriggered = false;
-          const startPlayback = () => {
-            if (playTriggered) return;
-            playTriggered = true;
-            video.play().then(() => {
-              $('status').textContent = `Assistindo ${c.name} (Ao Vivo)`;
-            }).catch(() => {
-              $('status').textContent = `Clique no player de vídeo para iniciar.`;
-            });
-          };
-
-          video.oncanplay = startPlayback;
-          video.onplaying = () => {
+        let playTriggered = false;
+        const startPlayback = () => {
+          if (playTriggered) return;
+          playTriggered = true;
+          video.play().then(() => {
             $('status').textContent = `Assistindo ${c.name} (Ao Vivo)`;
-          };
-          video.onwaiting = () => {
-            $('status').textContent = `Bufferizando...`;
-          };
-
-          // Monitor de Buffer em tempo real:
-          $('buffer-stat').style.display = 'inline-block';
-          bufferMonitor = setInterval(() => {
-            if (video.buffered.length > 0) {
-              const cur = video.currentTime;
-              let end = 0;
-              for (let i = 0; i < video.buffered.length; i++) {
-                if (video.buffered.start(i) <= cur && cur <= video.buffered.end(i)) {
-                  end = video.buffered.end(i);
-                  break;
-                }
-              }
-              const forward = Math.max(0, end - cur);
-              $('buffer-stat').textContent = `Buffer: ${forward.toFixed(1)}s`;
-              $('buffer-stat').style.color = forward > 6 ? '#4ade80' : '#f59e0b';
-            }
-          }, 1000);
-
-          let networkErrors = 0;
-          hls.on(Hls.Events.ERROR, (event, data) => {
-            if (data.fatal) {
-              if (data.type === Hls.ErrorTypes.NETWORK_ERROR && networkErrors < 2) {
-                networkErrors++;
-                hls.startLoad();
-              } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
-                hls.recoverMediaError();
-              } else {
-                $('status').textContent = 'Stream direto indisponível. Alternando para o player web...';
-                playChannel(c, 'embed', embedIndex);
-              }
-            }
+          }).catch(() => {
+            $('status').textContent = `Clique no player de vídeo para iniciar.`;
           });
-        } else {
-          video.src = streamTarget;
-          video.play().catch(() => {});
-        }
+        };
 
-        // Botão de recarregar sinal rápido
-        const reloadBtn = document.createElement('button');
-        reloadBtn.className = 'opt-btn';
-        reloadBtn.innerHTML = '⚡ Recarregar Sinal';
-        reloadBtn.onclick = () => playChannel(c, 'direct', embedIndex);
-        $('options').append(reloadBtn);
+        video.oncanplay = startPlayback;
+        video.onplaying = () => {
+          $('status').textContent = `Assistindo ${c.name} (Ao Vivo)`;
+        };
+        video.onwaiting = () => {
+          $('status').textContent = `Bufferizando...`;
+        };
 
-        if (c.embeds && c.embeds.length > 0) {
-          const altBtn = document.createElement('button');
-          altBtn.className = 'opt-btn';
-          altBtn.innerHTML = '🔄 Player Web Oficial';
-          altBtn.onclick = () => playChannel(c, 'embed', embedIndex);
-          $('options').append(altBtn);
-        }
+        // Monitor de Buffer em tempo real:
+        $('buffer-stat').style.display = 'inline-block';
+        bufferMonitor = setInterval(() => {
+          if (video.buffered.length > 0) {
+            const cur = video.currentTime;
+            let end = 0;
+            for (let i = 0; i < video.buffered.length; i++) {
+              if (video.buffered.start(i) <= cur && cur <= video.buffered.end(i)) {
+                end = video.buffered.end(i);
+                break;
+              }
+            }
+            const forward = Math.max(0, end - cur);
+            $('buffer-stat').textContent = `Buffer: ${forward.toFixed(1)}s`;
+            $('buffer-stat').style.color = forward > 6 ? '#4ade80' : '#f59e0b';
+          }
+        }, 1000);
 
+        let networkErrors = 0;
+        hls.on(Hls.Events.ERROR, (event, data) => {
+          if (data.fatal) {
+            if (data.type === Hls.ErrorTypes.NETWORK_ERROR && networkErrors < 4) {
+              networkErrors++;
+              $('status').textContent = 'Reconectando dados de rede...';
+              hls.startLoad();
+            } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+              hls.recoverMediaError();
+            } else {
+              $('status').textContent = 'Recarregando sinal ao vivo...';
+              setTimeout(() => {
+                if (selected === c) playChannel(c, embedIndex);
+              }, 2000);
+            }
+          }
+        });
       } else {
-        video.style.display = 'none';
-        frame.style.display = 'block';
+        video.src = proxiedM3u8;
+        video.play().catch(() => {});
+      }
 
-        const activeEmbed = c.embeds?.[embedIndex] || c.embeds?.[0];
-        frame.src = activeEmbed ? activeEmbed.url : 'about:blank';
+      // Botão de recarregar sinal rápido
+      const reloadBtn = document.createElement('button');
+      reloadBtn.className = 'opt-btn active';
+      reloadBtn.innerHTML = '⚡ Recarregar Sinal';
+      reloadBtn.onclick = () => playChannel(c, embedIndex);
+      $('options').append(reloadBtn);
 
-        $('status').textContent = c.isEvent ? `Assistindo partida: ${c.name}` : `Reproduzindo ${c.name} via Player Web.`;
-
-        if (!c.isEvent && c.stream) {
-          const directBtn = document.createElement('button');
-          directBtn.className = 'opt-btn active';
-          directBtn.innerHTML = '⚡ Modo Stream Direto';
-          directBtn.onclick = () => playChannel(c, 'direct');
-          $('options').append(directBtn);
-        }
-
-        (c.embeds || []).forEach((emb, idx) => {
+      // Se houver mais de um sinal ou opção de transmissão:
+      if (c.embeds && c.embeds.length > 1) {
+        c.embeds.forEach((emb, idx) => {
           const btn = document.createElement('button');
           btn.className = 'opt-btn' + (idx === embedIndex ? ' active' : '');
-          btn.textContent = emb.label || `Opção ${idx + 1}`;
-          btn.onclick = () => playChannel(c, 'embed', idx);
+          btn.textContent = emb.label || `Sinal ${idx + 1}`;
+          btn.onclick = () => playChannel(c, idx);
           $('options').append(btn);
         });
       }
