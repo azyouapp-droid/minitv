@@ -85,7 +85,7 @@
     document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{const dest=b.dataset.view;if(dest==='notifications'){dialog('Notificações','Você não tem novas notificações.');return;}if(dest==='settings'){dialog('Sua Mini TV','Os favoritos ficam salvos neste navegador. Use o controle no vídeo para ajustar o volume e entrar em tela cheia. As imagens dos cards ilustram as categorias.');return;}navigate(dest);});
     $('profile').onclick=()=>document.querySelector('[data-view="settings"]').click();$('brand').onclick=e=>{e.preventDefault();navigate('home');};$('nav-search').onclick=search;$('top-search').onclick=search;$('all-channels').onclick=()=>navigate('channels');$('explore').onclick=()=>navigate('explore');$('back').onclick=()=>navigate('explore');$('current-fav').onclick=()=>{if(selected)favorite(selected);};$('close-dialog').onclick=()=>$('dialog').close();
 
-    function playChannel(c, mode = 'direct', embedIndex = 0) {
+    async function playChannel(c, mode = 'direct', embedIndex = 0) {
       selected = c;
       setMode(document.fullscreenElement?'explore':'live');
       render();
@@ -110,7 +110,6 @@
       video.load();
 
       const embedUrl = c.embeds?.[embedIndex]?.url || c.embeds?.[0]?.url || '';
-      const streamUrl = c.stream || '';
 
       if (mode === 'direct') {
         frame.style.display = 'none';
@@ -118,7 +117,26 @@
         video.style.display = 'block';
         $('status').textContent = `Conectando stream de ${c.name}...`;
 
-        const proxiedM3u8 = c.ingestUrl || `/m3u8?url=${encodeURIComponent(streamUrl)}&embed=${encodeURIComponent(embedUrl)}`;
+        let streamTarget = c.stream || '';
+        if (embedUrl) {
+          try {
+            const resp = await fetch(embedUrl, { signal: AbortSignal.timeout(3500) });
+            if (resp.ok) {
+              const html = await resp.text();
+              const match = html.match(/const src\s*=\s*"(https:\/\/[^"\s]+)"/)?.[1];
+              if (match && !match.includes('akamaized.net')) {
+                streamTarget = match;
+                c.stream = match;
+              }
+            }
+          } catch {}
+        }
+
+        if (!streamTarget) {
+          $('status').textContent = 'Stream direto indisponível. Alternando para o player web...';
+          playChannel(c, 'embed', embedIndex);
+          return;
+        }
 
         if (window.Hls && Hls.isSupported()) {
           hls = new Hls({
@@ -140,7 +158,7 @@
             manifestLoadingMaxRetry: 6
           });
 
-          hls.loadSource(proxiedM3u8);
+          hls.loadSource(streamTarget);
           hls.attachMedia(video);
 
           let playTriggered = false;
@@ -180,20 +198,22 @@
             }
           }, 1000);
 
+          let networkErrors = 0;
           hls.on(Hls.Events.ERROR, (event, data) => {
             if (data.fatal) {
-              if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+              if (data.type === Hls.ErrorTypes.NETWORK_ERROR && networkErrors < 2) {
+                networkErrors++;
                 hls.startLoad();
               } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
                 hls.recoverMediaError();
               } else {
-                $('status').textContent = 'Stream direto indisponível. Alternando para player seguro...';
+                $('status').textContent = 'Stream direto indisponível. Alternando para o player web...';
                 playChannel(c, 'embed', embedIndex);
               }
             }
           });
         } else {
-          video.src = proxiedM3u8;
+          video.src = streamTarget;
           video.play().catch(() => {});
         }
 
@@ -217,8 +237,7 @@
         frame.style.display = 'block';
 
         const activeEmbed = c.embeds[embedIndex] || c.embeds[0];
-        const cleanPlayerUrl = `/proxy-player?url=${encodeURIComponent(activeEmbed.url)}`;
-        frame.src = cleanPlayerUrl;
+        frame.src = activeEmbed ? activeEmbed.url : 'about:blank';
 
         $('status').textContent = `Reproduzindo ${c.name} via Player Web.`;
 
