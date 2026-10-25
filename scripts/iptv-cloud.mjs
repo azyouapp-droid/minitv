@@ -76,7 +76,7 @@ export async function iptvCloud(req,res) {
     }
     if(!authorized(req,cfg)){res.writeHead(401,{'Content-Type':'application/json'});res.end('{"loginRequired":true}');return true;}
     if(path==='/events'){res.writeHead(200,{'Content-Type':'application/json'});res.end('[]');return true;}
-    if(path==='/refresh'||path==='/multicanais-embed-catalog.json'){
+    if(path==='/refresh'||path==='/iptv/catalog'||path==='/multicanais-embed-catalog.json'){
       if(path==='/refresh')channelsCache.expires=0;
       const data=await catalog(cfg);res.writeHead(200,{'Content-Type':'application/json'});res.end(JSON.stringify(data));return true;
     }

@@ -1211,13 +1211,14 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
       $('reload').disabled = true;
 
       try {
-        let response = await fetch('./multicanais-embed-catalog.json', { cache: 'no-store' });
+        let response = await fetch('/iptv/catalog', { cache: 'no-store' });
+        if (response.status === 404) response = await fetch('./multicanais-embed-catalog.json', { cache: 'no-store' });
         if (response.status === 401) {
           const password = window.prompt('MiniTV — digite a senha do teste privado:');
           if (!password) throw new Error('Acesso privado');
           const login = await fetch('/iptv/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) });
           if (!login.ok) throw new Error('Senha inválida');
-          response = await fetch('./multicanais-embed-catalog.json', { cache: 'no-store' });
+          response = await fetch('/iptv/catalog', { cache: 'no-store' });
         }
         if (!response.ok) throw new Error('Falha ao baixar catálogo');
 
