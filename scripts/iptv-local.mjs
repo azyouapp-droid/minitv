@@ -28,7 +28,7 @@ async function load() {
       info = { name: line.slice(line.lastIndexOf(',') + 1).trim(), group: line.match(/group-title="([^"]*)"/)?.[1] || '' };
     } else if (info && /^https?:\/\//.test(line)) {
       if (/[\/.]m3u8(?:\?|$)/i.test(line.trim()) && !/\/(movie|series)\//i.test(line) && !/adult|xxx|sexy|playboy/i.test(info.name + ' ' + info.group)) {
-        channels.push({ id: 'iptv-' + channels.length, name: info.name, stream: resource(line.trim()), embeds: [], provider: 'IPTV mensal' });
+        channels.push({ id: 'iptv-' + channels.length, name: info.name, stream: resource(line.trim()), embeds: [], provider: 'IPTV anual' });
       }
       info = null;
     }

@@ -29,7 +29,7 @@ async function catalog(cfg) {
   if (!response.ok) throw new Error('Catálogo indisponível');
   const data=await response.json();
   if (!Array.isArray(data)) throw new Error('Acesso IPTV indisponível');
-  const channels=data.filter(c=>c.stream_type==='live' && !/adult|xxx|sexy|playboy/i.test(c.name)).map(c=>({id:'iptv-'+c.stream_id,name:c.name,stream:route({id:String(c.stream_id),kind:'manifest'},cfg),embeds:[],provider:'IPTV mensal'}));
+  const channels=data.filter(c=>c.stream_type==='live' && !/adult|xxx|sexy|playboy/i.test(c.name)).map(c=>({id:'iptv-'+c.stream_id,name:c.name,stream:route({id:String(c.stream_id),kind:'manifest'},cfg),embeds:[],provider:'IPTV anual'}));
   if (!channels.length) throw new Error('Nenhum canal disponível');
   channelsCache.value={retrievedAt:new Date().toISOString(),channels}; channelsCache.expires=Date.now()+300000;
   return channelsCache.value;
