@@ -128,35 +128,51 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
       return 'Outros';
     }
 
+    const epgAliases = Object.freeze({
+      espn1: 'espn',
+      sporttv: 'sportv',
+      tvcultura: 'cultura',
+      recordtv: 'record',
+      recordtvrj: 'recordrj',
+      recordtvsp: 'recordsp',
+      recordtvmg: 'recordmg',
+      recordtvgo: 'recordgo',
+      sbttv: 'sbt',
+      sbttvrj: 'sbtrj',
+      sbttvsp: 'sbtsp',
+      bandtv: 'band',
+      bandtvrj: 'bandrj',
+      bandtvsp: 'bandsp'
+    });
+
+    function epgIdForChannel(c) {
+      if (c?.epgId) return c.epgId;
+      const name = (c?.page || c?.name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/\[[^\]]*\]/g, ' ')
+        .replace(/\b(?:fhdr|fhd|uhd|hd|sd|4k|8k|h265|hevc|alt|alternativo)\b/gi, ' ')
+        .toLowerCase().replace(/[^a-z0-9]+/g, '');
+      const candidate = epgData.has(name) ? name : epgAliases[name];
+      return candidate && epgData.has(candidate) ? candidate : null;
+    }
+
     function getEpgForChannel(c) {
       if (!c || !epgData.size) return null;
-      const id = (c.id || '').toLowerCase();
-      const rawId = (c.page || c.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-      let list = epgData.get(id) || epgData.get(rawId);
-      if (!list) {
-        if (/^sbt/.test(id)) list = epgData.get('sbt');
-        else if (/^record/.test(id) && !id.includes('news')) list = epgData.get('record');
-        else if (/^band/.test(id) && !id.includes('news') && !id.includes('sports')) list = epgData.get('band');
-        else if (/^redetv/.test(id)) list = epgData.get('redetv');
-      }
-      if (!list || !list.length) return null;
+      const list = epgData.get(epgIdForChannel(c));
+      if (!list?.length) return null;
 
       const now = Date.now();
-      for (let i = 0; i < list.length; i++) {
-        const item = list[i];
-        const start = new Date(item.start_date).getTime();
-        const nextStart = list[i + 1] ? new Date(list[i + 1].start_date).getTime() : (start + 3600000);
-        if (now >= start && now < nextStart) {
-          return {
-            current: item,
-            next: list[i + 1] || null
-          };
-        }
+      const schedule = list.map(item => ({ item, start: new Date(item.start_date).getTime() }))
+        .filter(entry => Number.isFinite(entry.start))
+        .sort((a, b) => a.start - b.start);
+      const currentIndex = schedule.findIndex((entry, index) => {
+        const nextStart = schedule[index + 1]?.start ?? entry.start + 3600000;
+        return now >= entry.start && now < nextStart;
+      });
+      if (currentIndex >= 0) {
+        return { current: schedule[currentIndex].item, next: schedule[currentIndex + 1]?.item || null };
       }
-      if (now < new Date(list[0].start_date).getTime()) {
-        return { current: null, next: list[0] };
-      }
-      return { current: list[list.length - 1], next: null };
+      const next = schedule.find(entry => entry.start > now);
+      return next ? { current: null, next: next.item } : null;
     }
 
     let view='home', hudTimer, hudHover=false, lastPointer=0;
@@ -1178,9 +1194,9 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
         if (!resp.ok) return;
         const data = await resp.json();
         if (Array.isArray(data)) {
+          epgData.clear();
           for (const item of data) {
             if (item.id && Array.isArray(item.data)) {
-              epgData.set(item.id.toLowerCase(), item.data);
               epgData.set(item.id.toLowerCase().replace(/[^a-z0-9]/g, ''), item.data);
             }
           }
