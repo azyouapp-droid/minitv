@@ -23,6 +23,7 @@ test('IPTV: public catalog, token rotation, cold instance, streaming, tamper rej
   await once(server,'listening');
   const base='http://127.0.0.1:'+server.address().port;
   try {
+    assert.equal((await realFetch(base+'/multicanais-embed-catalog.json')).status,404);
     const headers={};
     const catalog=await(await realFetch(base+'/iptv/catalog',{headers})).json();
     assert.equal(catalog.channels.length,1);

@@ -28,10 +28,8 @@ if (artMatch) {
   fs.writeFileSync('public/category-art.png', Buffer.from(artMatch[1], 'base64'));
 }
 
-const catalogMatch = workerContent.match(/let currentCatalog=(\{[\s\S]+?\});\r?\nasync function refreshCatalog/);
-if (catalogMatch) {
-  fs.writeFileSync('public/multicanais-embed-catalog.json', catalogMatch[1]);
-}
+// The old EmbedTV catalog is no longer published.
+fs.rmSync('public/multicanais-embed-catalog.json', { force: true });
 
 fs.copyFileSync('worker/index.js', 'dist/server/index.js');
 if (fs.existsSync('.openai/hosting.json')) {

@@ -1212,7 +1212,6 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
 
       try {
         let response = await fetch('/iptv/catalog', { cache: 'no-store' });
-        if (response.status === 404) response = await fetch('./multicanais-embed-catalog.json', { cache: 'no-store' });
         if (!response.ok) throw new Error('Falha ao baixar catálogo');
 
         const catalog = await response.json();

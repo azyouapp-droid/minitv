@@ -40,11 +40,11 @@ async function load() {
 }
 export async function iptvLocal(req, res) {
   const path = new URL(req.url, 'http://localhost').pathname;
-  if (!['/iptv/catalog', '/multicanais-embed-catalog.json', '/refresh', '/events'].includes(path) && !path.startsWith('/iptv/media/')) return false;
+  if (!['/iptv/catalog', '/refresh', '/events'].includes(path) && !path.startsWith('/iptv/media/')) return false;
   try { await fs.access(configPath); } catch { return false; }
   try {
     if (path === '/events') { res.writeHead(200, {'Content-Type':'application/json'}); res.end('[]'); return true; }
-    if (path === '/refresh' || path === '/iptv/catalog' || path === '/multicanais-embed-catalog.json') {
+    if (path === '/refresh' || path === '/iptv/catalog') {
       if (!catalog || path === '/refresh') await load();
       res.writeHead(200, {'Content-Type':'application/json', 'Cache-Control':'no-store'});
       res.end(JSON.stringify(catalog)); return true;

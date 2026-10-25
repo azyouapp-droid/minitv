@@ -54,13 +54,13 @@ async function manifest(id,cfg) {
 }
 export async function iptvCloud(req,res) {
   const path=new URL(req.url,'http://localhost').pathname;
-  const relevant=path==='/multicanais-embed-catalog.json'||path==='/refresh'||path==='/events'||path.startsWith('/iptv/');
+  const relevant=path==='/refresh'||path==='/events'||path.startsWith('/iptv/');
   if (!relevant || !process.env.IPTV_PLAYLIST_URL) return false;
   res.setHeader('Cache-Control','private, no-store');
   try {
     const cfg=settings();
     if(path==='/events'){res.writeHead(200,{'Content-Type':'application/json'});res.end('[]');return true;}
-    if(path==='/refresh'||path==='/iptv/catalog'||path==='/multicanais-embed-catalog.json'){
+    if(path==='/refresh'||path==='/iptv/catalog'){
       if(path==='/refresh')channelsCache.expires=0;
       const data=await catalog(cfg);res.writeHead(200,{'Content-Type':'application/json'});res.end(JSON.stringify(data));return true;
     }
