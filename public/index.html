@@ -797,7 +797,7 @@
     let playbackSession = 0;
     let playbackCleanup = () => {};
 
-    async function playChannel(c, useProxy = false) {
+    async function playChannel(c, useProxy = false, refreshed = false) {
       const session = ++playbackSession;
       playbackCleanup();
       playbackCleanup = () => {};
@@ -911,11 +911,34 @@
 
       let failed = false;
       let mediaRecoveries = 0;
-      const failPlayback = () => {
+      const failPlayback = async () => {
         if (!isCurrent() || failed) return;
         failed = true;
+        playbackCleanup();
+        if (!useProxy && !refreshed && c.id && channels.includes(c)) {
+          if (spinner) {
+            spinner.style.display = 'flex';
+            spinnerText.textContent = 'Atualizando sinal...';
+          }
+          try {
+            const response = await fetch(`/stream?id=${encodeURIComponent(c.id)}`, {
+              cache: 'no-store', signal: AbortSignal.timeout(10000)
+            });
+            if (!isCurrent()) return;
+            if (response.ok) {
+              const data = await response.json();
+              if (!isCurrent()) return;
+              if (data.url && data.url !== directStream) {
+                c.stream = data.url;
+                playChannel(c, false, true);
+                return;
+              }
+            }
+          } catch {}
+          if (!isCurrent()) return;
+        }
         if (canTryProxy) {
-          playChannel(c, true);
+          playChannel(c, true, true);
           return;
         }
         playbackCleanup();
