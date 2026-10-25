@@ -1,3 +1,7 @@
 ingest/
 node_modules/
 dist/
+
+.iptv-*.json
+.iptv-*.m3u
+scripts/serve.pre-iptv.mjs

@@ -3,3 +3,10 @@ node_modules/
 .DS_Store
 Thumbs.db
 scratch/
+
+.iptv-local.json
+.iptv-cache.m3u
+
+.iptv-*.json
+.iptv-*.m3u
+scripts/serve.pre-iptv.mjs

@@ -1,7 +1,13 @@
+import { iptvCloud } from '../scripts/iptv-cloud.mjs';
 import app from '../worker/index.js';
 
 export default async function handler(req, res) {
   try {
+    const originalUrl = req.url;
+    const routed = new URL(req.url, 'http://localhost');
+    if (routed.searchParams.has('iptvPath')) req.url = routed.searchParams.get('iptvPath');
+    if (await iptvCloud(req, res)) return;
+    req.url = originalUrl;
     const host = req.headers['x-forwarded-host'] || req.headers.host || 'localhost';
     const proto = req.headers['x-forwarded-proto'] || 'https';
     const reqUrlObj = new URL(req.url, 'http://localhost');

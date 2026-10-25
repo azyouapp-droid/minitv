@@ -31,6 +31,14 @@
   ],
   "rewrites": [
     {
+      "source": "/iptv/:path*",
+      "destination": "/api/index?iptvPath=/iptv/:path*"
+    },
+    {
+      "source": "/multicanais-embed-catalog.json",
+      "destination": "/api/index?iptvPath=/multicanais-embed-catalog.json"
+    },
+    {
       "source": "/stream",
       "destination": "/api/index"
     },
