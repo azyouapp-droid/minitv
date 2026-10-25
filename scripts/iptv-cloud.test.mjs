@@ -4,10 +4,9 @@ import http from 'node:http';
 import { once } from 'node:events';
 import { iptvCloud } from './iptv-cloud.mjs';
 
-test('private IPTV: auth, token rotation, cold instance, streaming, tamper rejection', async () => {
+test('IPTV: public catalog, token rotation, cold instance, streaming, tamper rejection', async () => {
   process.env.IPTV_PLAYLIST_URL='https://provider.invalid/get.php?username=fixture-user&password=fixture-password';
   process.env.IPTV_SIGNING_SECRET='test-secret-with-at-least-32-characters';
-  process.env.IPTV_TEST_PASSWORD='fixture-login';
   const realFetch=globalThis.fetch;
   let rotation=0;
   globalThis.fetch=async (input, options)=>{
@@ -24,12 +23,8 @@ test('private IPTV: auth, token rotation, cold instance, streaming, tamper rejec
   await once(server,'listening');
   const base='http://127.0.0.1:'+server.address().port;
   try {
-    assert.equal((await realFetch(base+'/multicanais-embed-catalog.json')).status,401);
-    assert.equal((await realFetch(base+'/iptv/login',{method:'POST',body:JSON.stringify({password:'wrong'})})).status,401);
-    const login=await realFetch(base+'/iptv/login',{method:'POST',body:JSON.stringify({password:'fixture-login'})});
-    assert.equal(login.status,204);
-    const headers={cookie:login.headers.get('set-cookie').split(';')[0]};
-    const catalog=await(await realFetch(base+'/multicanais-embed-catalog.json',{headers})).json();
+    const headers={};
+    const catalog=await(await realFetch(base+'/iptv/catalog',{headers})).json();
     assert.equal(catalog.channels.length,1);
     assert.ok(!JSON.stringify(catalog).includes('fixture-password'));
     const url=base+catalog.channels[0].stream;

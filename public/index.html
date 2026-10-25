@@ -1213,29 +1213,6 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
       try {
         let response = await fetch('/iptv/catalog', { cache: 'no-store' });
         if (response.status === 404) response = await fetch('./multicanais-embed-catalog.json', { cache: 'no-store' });
-        if (response.status === 401) {
-          const password = await new Promise(resolve => {
-            const dialog = $('dialog');
-            $('dialog-title').textContent = 'Acesso privado';
-            const form = document.createElement('form');
-            const label = document.createElement('label');
-            label.textContent = 'Senha do teste MiniTV';
-            const input = document.createElement('input');
-            input.type = 'password'; input.required = true; input.autocomplete = 'current-password';
-            input.setAttribute('aria-label', 'Senha do teste MiniTV');
-            input.style.cssText = 'display:block;width:100%;box-sizing:border-box;padding:12px;margin:12px 0;border:1px solid #cbd5e1;border-radius:10px';
-            const button = document.createElement('button');
-            button.type = 'submit'; button.textContent = 'Entrar'; button.className = 'primary';
-            label.append(input); form.append(label, button);
-            form.onsubmit = event => { event.preventDefault(); resolve(input.value); dialog.close(); };
-            dialog.addEventListener('close', () => resolve(null), { once: true });
-            $('dialog-body').replaceChildren(form); dialog.showModal(); input.focus();
-          });
-          if (!password) throw new Error('Acesso privado');
-          const login = await fetch('/iptv/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) });
-          if (!login.ok) throw new Error('Senha inválida');
-          response = await fetch('/iptv/catalog', { cache: 'no-store' });
-        }
         if (!response.ok) throw new Error('Falha ao baixar catálogo');
 
         const catalog = await response.json();

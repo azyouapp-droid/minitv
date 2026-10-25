@@ -8,9 +8,9 @@ const canonical = value => { const u = new URL(value); u.searchParams.delete('to
 function settings() {
   const playlist = process.env.IPTV_PLAYLIST_URL;
   if (!playlist) return null;
-  if (!process.env.IPTV_SIGNING_SECRET || !process.env.IPTV_TEST_PASSWORD) throw new Error('IPTV incompleto');
+  if (!process.env.IPTV_SIGNING_SECRET) throw new Error('IPTV incompleto');
   const url = new URL(playlist);
-  return { url, username: url.searchParams.get('username'), password: url.searchParams.get('password'), secret: process.env.IPTV_SIGNING_SECRET, access: process.env.IPTV_TEST_PASSWORD };
+  return { url, username: url.searchParams.get('username'), password: url.searchParams.get('password'), secret: process.env.IPTV_SIGNING_SECRET };
 }
 function signature(value, cfg) { return createHmac('sha256', cfg.secret).update(value).digest('base64url'); }
 function equal(a, b) { const x=Buffer.from(a || ''), y=Buffer.from(b || ''); return x.length === y.length && timingSafeEqual(x,y); }
@@ -21,11 +21,6 @@ function untoken(value, cfg) {
   return JSON.parse(Buffer.from(data,'base64url').toString());
 }
 function route(payload, cfg) { return '/iptv/media/'+token(payload,cfg); }
-function authorized(req,cfg) {
-  const cookie=(req.headers.cookie || '').split(';').map(x=>x.trim()).find(x=>x.startsWith('minitv_access='))?.slice(14);
-  if (!cookie) return false;
-  try { const data=untoken(cookie,cfg); return data.kind==='access' && data.expires>Date.now(); } catch { return false; }
-}
 async function catalog(cfg) {
   if (channelsCache.value && Date.now()<channelsCache.expires) return channelsCache.value;
   const url=new URL('/player_api.php',cfg.url);
@@ -64,17 +59,6 @@ export async function iptvCloud(req,res) {
   res.setHeader('Cache-Control','private, no-store');
   try {
     const cfg=settings();
-    if(path==='/iptv/login' && req.method==='POST') {
-      if (req.headers.origin && new URL(req.headers.origin).host!==req.headers.host) {res.writeHead(403);res.end();return true;}
-      let input=req.body;
-      if (!input) { let body='';for await(const chunk of req){body+=chunk;if(body.length>1024)throw new Error('Entrada inválida');} input=JSON.parse(body); }
-      if(typeof input==='string')input=JSON.parse(input);
-      if(!equal(input.password,cfg.access)){res.writeHead(401);res.end('Senha inválida');return true;}
-      const cookie=token({kind:'access',expires:Date.now()+86400000},cfg);
-      res.setHeader('Set-Cookie','minitv_access='+cookie+'; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=86400');
-      res.writeHead(204);res.end();return true;
-    }
-    if(!authorized(req,cfg)){res.writeHead(401,{'Content-Type':'application/json'});res.end('{"loginRequired":true}');return true;}
     if(path==='/events'){res.writeHead(200,{'Content-Type':'application/json'});res.end('[]');return true;}
     if(path==='/refresh'||path==='/iptv/catalog'||path==='/multicanais-embed-catalog.json'){
       if(path==='/refresh')channelsCache.expires=0;
