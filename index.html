@@ -738,6 +738,9 @@
     });
 
     function stopPlayback() {
+      playbackSession++;
+      playbackCleanup();
+      playbackCleanup = () => {};
       if (bufferMonitor) clearInterval(bufferMonitor);
       if (watchdogTimer) clearInterval(watchdogTimer);
       if (hls) {
@@ -791,9 +794,14 @@
     });
 
     let watchdogTimer = null;
-    let usingProxyStream = false;
+    let playbackSession = 0;
+    let playbackCleanup = () => {};
 
-    async function playChannel(c, forceProxy = false) {
+    async function playChannel(c, useProxy = false) {
+      const session = ++playbackSession;
+      playbackCleanup();
+      playbackCleanup = () => {};
+      const isCurrent = () => session === playbackSession;
       if (document.fullscreenElement) {
         $('app').classList.remove('browse-open');
       }
@@ -823,29 +831,36 @@
         hls = null;
       }
 
-      // Rota proxy inteligente local (elimina bloqueios de adblockers, operadoras e CORS)
-      const directStream = c.stream || '';
+      // Fetch media in the viewer's browser; use the server only as a fallback.
+      let directStream = c.stream || '';
       const embedUrl = c.embeds?.[0]?.url || '';
-      const proxyUrl = `/m3u8?url=${encodeURIComponent(directStream)}&embed=${encodeURIComponent(embedUrl)}`;
-
-      let streamUrl = forceProxy ? (directStream || proxyUrl) : (proxyUrl || directStream);
-
-      if (!streamUrl && c.isEvent && c.embeds?.[0]?.url) {
-        const slug = (c.embeds[0].url || '').replace(/.*\/([^\/]+)$/, '$1').toLowerCase();
-        const matched = channels.find(ch => (ch.id && ch.id.toLowerCase() === slug) || (ch.page && ch.page.toLowerCase().includes('/' + slug + '/')));
-        if (matched?.stream) {
-          streamUrl = `/m3u8?url=${encodeURIComponent(matched.stream)}`;
-        } else {
-          streamUrl = `/m3u8?embed=${encodeURIComponent(c.embeds[0].url)}`;
-        }
+      if (!directStream && c.isEvent && embedUrl) {
+        const slug = new URL(embedUrl).pathname.split('/').filter(Boolean).pop()?.toLowerCase();
+        const matched = channels.find(ch => ch.id?.toLowerCase() === slug);
+        directStream = matched?.stream || '';
       }
+      const proxyUrl = directStream || embedUrl
+        ? `/m3u8?url=${encodeURIComponent(directStream)}&embed=${encodeURIComponent(embedUrl)}`
+        : '';
+      const streamUrl = useProxy ? proxyUrl : (directStream || proxyUrl);
+      const canTryProxy = !useProxy && !!directStream && !!proxyUrl;
+      video.onerror = null;
+      video.onplaying = null;
+      video.oncanplay = null;
+      video.ontimeupdate = null;
+      video.onwaiting = null;
+      video.pause();
+      video.removeAttribute('src');
+      video.load();
 
       if (!streamUrl) {
         if (spinner) spinner.style.display = 'none';
+        $('status').style.display = 'block';
         $('status').textContent = 'Sinal temporariamente indisponível para este canal.';
         return;
       }
 
+      $('status').style.display = 'none';
       $('status').textContent = `Sintonizando ${c.name}...`;
 
       video.onclick = () => {
@@ -863,6 +878,7 @@
 
       let waitingTimeout = null;
       const hideSpinner = () => {
+        if (!isCurrent()) return;
         if (waitingTimeout) {
           clearTimeout(waitingTimeout);
           waitingTimeout = null;
@@ -871,20 +887,53 @@
       };
 
       const startPlayback = () => {
+        if (!isCurrent()) return;
         video.play().then(() => {
+          if (!isCurrent()) return;
           hideSpinner();
           $('status').textContent = `Assistindo ${c.name} (Ao Vivo)`;
         }).catch(() => {
+          if (!isCurrent()) return;
           video.muted = true;
           syncVolume();
           video.play().then(() => {
+            if (!isCurrent()) return;
             hideSpinner();
             $('status').textContent = `Assistindo ${c.name} (Toque no som para ativar áudio)`;
           }).catch(() => {
+            if (!isCurrent()) return;
             hideSpinner();
+            $('status').style.display = 'block';
             $('status').textContent = `Toque no player para iniciar a transmissão.`;
           });
         });
+      };
+
+      let failed = false;
+      let mediaRecoveries = 0;
+      const failPlayback = () => {
+        if (!isCurrent() || failed) return;
+        failed = true;
+        if (canTryProxy) {
+          playChannel(c, true);
+          return;
+        }
+        playbackCleanup();
+        hideSpinner();
+        if (hls) { hls.destroy(); hls = null; }
+        video.pause();
+        $('status').style.display = 'block';
+        $('status').textContent = 'Não foi possível conectar a este canal. Tente novamente ou escolha outro canal.';
+      };
+      playbackCleanup = () => {
+        clearInterval(bufferMonitor);
+        clearInterval(watchdogTimer);
+        clearTimeout(waitingTimeout);
+        video.onerror = null;
+        video.onplaying = null;
+        video.oncanplay = null;
+        video.ontimeupdate = null;
+        video.onwaiting = null;
       };
 
       if (window.Hls && Hls.isSupported()) {
@@ -956,67 +1005,41 @@
           }
         }, 1000);
 
-        // Watchdog anti-congelamento: recupera caso trave em tela preta ou buffer
-        let lastCurTime = -1;
-        let stalledCount = 0;
-        watchdogTimer = setInterval(() => {
-          if (!selected || !hls) {
-            stalledCount = 0;
-            return;
-          }
-          if (video.currentTime !== lastCurTime && video.currentTime > 0 && !video.paused) {
-            lastCurTime = video.currentTime;
-            stalledCount = 0;
-            hideSpinner();
-            return;
-          }
-          stalledCount++;
-          if (stalledCount === 6) {
-            console.warn('[Player Watchdog] Sinal pendente: tentando recoverMediaError...');
-            if (hls) {
-              hls.recoverMediaError();
-              hls.startLoad();
-              startPlayback();
-            }
-          } else if (stalledCount >= 12) {
-            stalledCount = 0;
-            console.warn('[Player Watchdog] Alternando canal/fluxo...');
-            if (!forceProxy && directStream) {
-              playChannel(c, true);
-            } else {
-              hls.startLoad();
-            }
-          }
-        }, 1000);
-
         hls.on(Hls.Events.ERROR, (event, data) => {
+          if (!isCurrent() || failed) return;
           console.warn('[HLS ERROR]', data.type, data.details, data.fatal);
-          if (data.details === Hls.ErrorDetails.BUFFER_STALLED_ERROR) {
-            hls.startLoad();
-            return;
-          }
-
-          if (data.fatal) {
-            if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
-              hls.recoverMediaError();
-            } else if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-              if (!forceProxy && directStream) {
-                playChannel(c, true);
-              } else {
-                hls.startLoad();
-              }
-            } else {
-              hls.destroy();
-              setTimeout(() => {
-                if (selected === c) playChannel(c, !forceProxy);
-              }, 1500);
-            }
+          if (!data.fatal) return;
+          if (data.type === Hls.ErrorTypes.MEDIA_ERROR && mediaRecoveries++ < 1) {
+            hls.recoverMediaError();
+          } else {
+            failPlayback();
           }
         });
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.onerror = failPlayback;
+        video.onplaying = hideSpinner;
+        video.oncanplay = startPlayback;
         video.src = streamUrl;
         startPlayback();
+      } else {
+        failPlayback();
+        return;
       }
+
+      // Stop stalled attempts, including native HLS, without alternating forever.
+      let lastTime = video.currentTime;
+      let stalledSeconds = 0;
+      watchdogTimer = setInterval(() => {
+        if (!isCurrent() || failed) return;
+        if (video.currentTime > lastTime) {
+          stalledSeconds = 0;
+          hideSpinner();
+        } else if (!video.paused || video.readyState < 3) {
+          stalledSeconds++;
+        }
+        lastTime = video.currentTime;
+        if (stalledSeconds >= 25) failPlayback();
+      }, 1000);
     }
 
     async function loadEPG() {
