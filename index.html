@@ -1684,8 +1684,32 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
       // Stop stalled attempts, including native HLS, without alternating forever.
       let lastTime = video.currentTime;
       let stalledSeconds = 0;
+      let gapSeconds = 0;
       watchdogTimer = setInterval(() => {
         if (!isCurrent() || failed) return;
+        // Live HLS can jump ahead when the provider drops a few segments.
+        // Resume at data already buffered instead of displaying a frozen frame
+        // while currentTime walks through an empty interval.
+        if (directStream.startsWith('/iptv/media/') && !video.paused && video.readyState < 3 && video.currentTime > 1) {
+          const current = video.currentTime;
+          let nextStart = null;
+          for (let i = 0; i < video.buffered.length; i++) {
+            const start = video.buffered.start(i);
+            const end = video.buffered.end(i);
+            if (start <= current + 0.1 && current < end - 0.1) { nextStart = null; break; }
+            if (start > current + 1.5) { nextStart = start; break; }
+          }
+          gapSeconds = nextStart !== null && nextStart - current < 120 ? gapSeconds + 1 : 0;
+          if (gapSeconds >= 2) {
+            video.currentTime = nextStart + 0.1;
+            lastTime = video.currentTime;
+            stalledSeconds = 0;
+            gapSeconds = 0;
+            return;
+          }
+        } else {
+          gapSeconds = 0;
+        }
         if (video.currentTime > lastTime) {
           stalledSeconds = 0;
           hideSpinner();
