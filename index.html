@@ -1659,7 +1659,7 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
 
         hls.on(Hls.Events.ERROR, (event, data) => {
           if (!isCurrent() || failed) return;
-          console.warn('[HLS ERROR]', data.type, data.details, data.fatal);
+          console.warn('[HLS ERROR]', data.type, data.details, data.fatal, String(data.reason || data.error?.message || '').slice(0, 160));
           if (!data.fatal) return;
           if (data.type === Hls.ErrorTypes.MEDIA_ERROR && mediaRecoveries++ < 1) {
             hls.recoverMediaError();
