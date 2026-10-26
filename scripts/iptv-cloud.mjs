@@ -5,6 +5,8 @@ import { getTodayEvents } from './sports-events.mjs';
 
 const channelsCache = { expires: 0, value: null };
 const mediaCache = new Map();
+const manifestCache = new Map();
+const manifestRequests = new Map();
 const MEDIA_WINDOW_MS = 10 * 60 * 1000;
 const MEDIA_MAX_AGE_MS = 2 * MEDIA_WINDOW_MS;
 const canonical = value => { const u = new URL(value); u.searchParams.delete('token'); return u.href; };
@@ -64,10 +66,10 @@ async function catalog(cfg) {
   channelsCache.value={retrievedAt:new Date().toISOString(),channels}; channelsCache.expires=Date.now()+300000;
   return channelsCache.value;
 }
-async function manifest(id,cfg) {
+async function fetchManifest(id,cfg) {
   if (!/^\d+$/.test(id)) throw new Error('Canal inválido');
   const url=new URL('/live/'+encodeURIComponent(cfg.username)+'/'+encodeURIComponent(cfg.password)+'/'+id+'.m3u8',cfg.url);
-  const response=await fetch(url,{signal:AbortSignal.timeout(15000)});
+  const response=await fetch(url,{signal:AbortSignal.timeout(8000)});
   if (!response.ok) throw new Error('Canal indisponível');
   const text=await response.text();
   if (!text.trimStart().startsWith('#EXTM3U')) throw new Error('Playlist inválida');
@@ -82,7 +84,22 @@ async function manifest(id,cfg) {
   // signed segment URLs across token rotations and independent instances.
   if (text.includes('#EXT-X-STREAM-INF')) throw new Error('Playlist master não suportada por este adaptador');
   if (mediaCache.size>20000) for (const [key,value] of mediaCache) if(value.expires<Date.now()) mediaCache.delete(key);
-  return text.split(/\r?\n/).map(line=>line.startsWith('#')?line.replace(/URI="([^"]+)"/g,(_,uri)=>'URI="'+remember(uri)+'"'):line.trim()?remember(line.trim()):line).join('\n');
+  const rewritten=text.split(/\r?\n/).map(line=>line.startsWith('#')?line.replace(/URI="([^"]+)"/g,(_,uri)=>'URI="'+remember(uri)+'"'):line.trim()?remember(line.trim()):line).join('\n');
+  manifestCache.set(id,{body:rewritten,time:Date.now()});
+  return rewritten;
+}
+async function manifest(id,cfg) {
+  if(!manifestRequests.has(id)) {
+    const pending=fetchManifest(id,cfg).finally(()=>manifestRequests.delete(id));
+    manifestRequests.set(id,pending);
+  }
+  try { return await manifestRequests.get(id); }
+  catch(error) {
+    // A short provider outage should not permanently stop an active live player.
+    const previous=manifestCache.get(id);
+    if(previous && Date.now()-previous.time<90000)return previous.body;
+    throw error;
+  }
 }
 export async function iptvCloud(req,res) {
   const path=new URL(req.url,'http://localhost').pathname;

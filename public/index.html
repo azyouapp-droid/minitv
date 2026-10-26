@@ -605,6 +605,13 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
       return variants.sort((a, b) => (qualityRank[a.quality] ?? 6) - (qualityRank[b.quality] ?? 6) || a.channel.name.localeCompare(b.channel.name, 'pt-BR'));
     }
 
+    function preferCompatibleVariant(current, candidate) {
+      if (!current) return candidate;
+      const currentH265 = /h\.?265|hevc/i.test(current.channel.name);
+      const candidateH265 = /h\.?265|hevc/i.test(candidate.channel.name);
+      return currentH265 && !candidateH265 ? candidate : current;
+    }
+
     function indexChannelQualities(list) {
       qualityVariantIndex = new Map();
       for (const channel of list) {
@@ -612,7 +619,7 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
         const id = variant.baseKey + '|' + variant.region;
         if (!qualityVariantIndex.has(id)) qualityVariantIndex.set(id, new Map());
         const options = qualityVariantIndex.get(id);
-        if (!options.has(variant.quality)) options.set(variant.quality, variant);
+        options.set(variant.quality, preferCompatibleVariant(options.get(variant.quality), variant));
       }
       for (const [id, options] of qualityVariantIndex) qualityVariantIndex.set(id, sortQualityVariants([...options.values()]));
     }
@@ -662,7 +669,9 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
       const regionRank = region => region === 'SP' ? 0 : region === 'RJ' ? 1 : region ? 2 : 3;
       return [...groups.values()].map(group => {
         const variants = [...group.regions.values()].map(signals => {
-          const choices = sortQualityVariants([...new Map([...signals.values()].map(v => [v.quality, v])).values()]);
+          const byQuality = new Map();
+          for (const variant of signals.values()) byQuality.set(variant.quality, preferCompatibleVariant(byQuality.get(variant.quality), variant));
+          const choices = sortQualityVariants([...byQuality.values()]);
           return choices[0];
         }).sort((a, b) => regionRank(a.region) - regionRank(b.region) || a.region.localeCompare(b.region));
         const displayName = variants.length > 1 ? group.base : variants[0]?.region ? group.base + ' ' + variants[0].region : group.base;
@@ -1413,7 +1422,7 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
     window.addEventListener('wheel', cancelAdRevealScroll, { passive: true });
     window.addEventListener('keydown', cancelAdRevealScroll);
 
-    async function playChannel(c, useProxy = false, refreshed = false, skipAdReveal = false) {
+    async function playChannel(c, useProxy = false, refreshed = false, skipAdReveal = false, reconnectAttempt = 0) {
       const session = ++playbackSession;
       playbackCleanup();
       playbackCleanup = () => {};
@@ -1533,8 +1542,26 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
         if (!isCurrent() || failed) return;
         failed = true;
         playbackCleanup();
+        if (directStream.startsWith('/iptv/media/')) {
+          if (reconnectAttempt < 3) {
+            if (spinner) {
+              spinner.style.display = 'flex';
+              spinnerText.textContent = 'Reconectando transmissão...';
+            }
+            const delay = 2000 * (reconnectAttempt + 1);
+            setTimeout(() => {
+              if (isCurrent()) playChannel(c, false, true, true, reconnectAttempt + 1);
+            }, delay);
+            return;
+          }
+          const alternative = qualityVariantsFor(c).find(variant => variant.channel.id !== c.id && !/h\.?265|hevc/i.test(variant.channel.name));
+          if (alternative && reconnectAttempt === 3) {
+            playChannel(alternative.channel, false, true, true, 4);
+            return;
+          }
+        }
         const providerChannel = channels.includes(c) ? c : c.providerChannel;
-        if (!useProxy && !refreshed && providerChannel?.id) {
+        if (!directStream.startsWith('/iptv/media/') && !useProxy && !refreshed && providerChannel?.id) {
           if (spinner) {
             spinner.style.display = 'flex';
             spinnerText.textContent = 'Atualizando sinal...';
@@ -1587,7 +1614,7 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
           maxBufferLength: 60,
           maxMaxBufferLength: 90,
           backBufferLength: 30,
-          manifestLoadingTimeOut: 10000,
+          manifestLoadingTimeOut: 12000,
           manifestLoadingMaxRetry: 4,
           levelLoadingTimeOut: 10000,
           levelLoadingMaxRetry: 4,

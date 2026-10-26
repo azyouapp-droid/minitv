@@ -11,11 +11,15 @@ test('IPTV: public catalog, token rotation, cold instance, streaming, tamper rej
   const realFetch=globalThis.fetch;
   let rotation=0;
   let catalogCalls=0;
+  let failManifest=false;
   globalThis.fetch=async (input, options)=>{
     const url=new URL(input);
     if(url.hostname!=='provider.invalid')return realFetch(input,options);
     if(url.pathname==='/player_api.php'){catalogCalls++;return Response.json([{stream_id:1,name:'Canal Teste',stream_type:'live'}]);}
-    if(url.pathname.endsWith('.m3u8'))return Object.defineProperty(new Response('#EXTM3U\n#EXT-X-TARGETDURATION:8\n#EXT-X-MEDIA-SEQUENCE:10\n#EXTINF:8,\nhttps://provider.invalid/hls/1_10.ts?token='+ ++rotation+'\n',{headers:{'Content-Type':'application/vnd.apple.mpegurl'}}),'url',{value:url.href});
+    if(url.pathname.endsWith('.m3u8')) {
+      if(failManifest)throw new DOMException('Provider timed out','TimeoutError');
+      return Object.defineProperty(new Response('#EXTM3U\n#EXT-X-TARGETDURATION:8\n#EXT-X-MEDIA-SEQUENCE:10\n#EXTINF:8,\nhttps://provider.invalid/hls/1_10.ts?token='+ ++rotation+'\n',{headers:{'Content-Type':'application/vnd.apple.mpegurl'}}),'url',{value:url.href});
+    }
     assert.equal(url.pathname,'/hls/1_10.ts');
     assert.ok(url.searchParams.get('token'));
     return new Response(new ReadableStream({start(controller){controller.enqueue(new TextEncoder().encode('first'));setTimeout(()=>{controller.enqueue(new TextEncoder().encode('last'));controller.close();},150);}}),{headers:{'Content-Type':'video/mp2t'}});
@@ -37,6 +41,9 @@ test('IPTV: public catalog, token rotation, cold instance, streaming, tamper rej
     const m1=await(await realFetch(url,{headers})).text();
     const m2=await(await realFetch(url,{headers})).text();
     assert.equal(m1,m2,'rotating provider token must not change segment URI');
+    failManifest=true;
+    assert.equal((await realFetch(url,{headers})).status,200,'brief provider timeout must not stop a live playlist');
+    failManifest=false;
     const segment=m1.split('\n').find(x=>x.startsWith('/iptv/media/'));
     const segment2=m2.split('\n').find(x=>x.startsWith('/iptv/media/'));
     assert.ok(segment?.startsWith('/iptv/media/enc.'));
