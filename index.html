@@ -1087,7 +1087,7 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
             scrollRoot.scrollTop = to;
             return;
           }
-          const duration = Math.min(8500, Math.max(4500, distance * 3.2));
+          const duration = Math.min(7000, Math.max(3800, distance * 2.7));
           const startedAt = performance.now();
           const step = now => {
             if (generation !== adScrollGeneration || !selected) return;
@@ -1097,7 +1097,7 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
             if (progress < 1) adScrollFrame = requestAnimationFrame(step);
           };
           adScrollFrame = requestAnimationFrame(step);
-        }, 850);
+        }, 700);
       }, 500);
     }
 
