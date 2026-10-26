@@ -278,13 +278,31 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
     let qualityVariantIndex = new Map();
     const qualityRank = Object.freeze({ '4K': 0, '8K': 0, UHD: 1, FHD: 2, HD: 3, SD: 4, 'Padrão': 5 });
 
-    function getChannelVariant(channel) {
-      let name = channel.name.trim().replace(/\s*(?:\[(?:h\.?265|hevc|alt|alternativo)\]|h\.?265|hevc|alt|alternativo)\s*$/i, '').trim();
+    const openChannelFamilies = [
+      { key: 'globo', label: 'Globo', pattern: /^GLOBO\b/i, exclude: /^GLOBO\s+NEWS\b/i },
+      { key: 'band', label: 'Band', pattern: /^BAND\b/i, exclude: /^BAND\s+(?:NEWS|SPORTS)\b/i },
+      { key: 'record', label: 'Record', pattern: /^RECORD\b/i, exclude: /^RECORD\s+NEWS\b/i },
+      { key: 'sbt', label: 'SBT', pattern: /^SBT\b/i, exclude: /^SBT\s+NEWS\b/i }
+    ];
+
+    function cleanChannelSignalName(value) {
+      let name = value.trim().replace(/\s*(?:\[(?:h\.?265|hevc|alt|alternativo)\]|h\.?265|hevc|alt|alternativo)\s*$/i, '').trim();
       let quality = '';
       const qualityPattern = /(?:\s+|-)(FHDR|FHD|UHD|HD|SD|4K|8K)$/i;
       for (let match; (match = name.match(qualityPattern));) {
         quality = match[1].toUpperCase() === 'FHDR' ? 'FHD' : match[1].toUpperCase();
         name = name.slice(0, match.index).trim().replace(/[-\s]+$/, '');
+      }
+      return { name, quality: quality || 'Padrão' };
+    }
+
+    function getChannelVariant(channel) {
+      const cleaned = cleanChannelSignalName(channel.name);
+      let name = cleaned.name;
+      const family = openChannelFamilies.find(item => item.pattern.test(name) && !item.exclude.test(name));
+      if (family) {
+        const plaza = name.replace(family.pattern, '').trim() || 'Nacional';
+        return { channel, base: family.label, baseKey: 'open:' + family.key, region: plaza, quality: cleaned.quality };
       }
       const regionPattern = /\s+(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)$/i;
       const regionMatch = name.match(regionPattern);
@@ -292,7 +310,7 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
       if (regionMatch) name = name.slice(0, regionMatch.index).trim();
       const base = name || channel.name;
       const baseKey = base.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '');
-      return { channel, base, baseKey, region, quality: quality || 'Padrão' };
+      return { channel, base, baseKey, region, quality: cleaned.quality };
     }
 
     function sortQualityVariants(variants) {
