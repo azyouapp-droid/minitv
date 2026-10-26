@@ -1422,7 +1422,7 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
     window.addEventListener('wheel', cancelAdRevealScroll, { passive: true });
     window.addEventListener('keydown', cancelAdRevealScroll);
 
-    async function playChannel(c, useProxy = false, refreshed = false, skipAdReveal = false, reconnectAttempt = 0) {
+    async function playChannel(c, useProxy = false, refreshed = false, skipAdReveal = false) {
       const session = ++playbackSession;
       playbackCleanup();
       playbackCleanup = () => {};
@@ -1542,24 +1542,6 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
         if (!isCurrent() || failed) return;
         failed = true;
         playbackCleanup();
-        if (directStream.startsWith('/iptv/media/')) {
-          if (reconnectAttempt < 3) {
-            if (spinner) {
-              spinner.style.display = 'flex';
-              spinnerText.textContent = 'Reconectando transmissão...';
-            }
-            const delay = 2000 * (reconnectAttempt + 1);
-            setTimeout(() => {
-              if (isCurrent()) playChannel(c, false, true, true, reconnectAttempt + 1);
-            }, delay);
-            return;
-          }
-          const alternative = qualityVariantsFor(c).find(variant => variant.channel.id !== c.id && !/h\.?265|hevc/i.test(variant.channel.name));
-          if (alternative && reconnectAttempt === 3) {
-            playChannel(alternative.channel, false, true, true, 4);
-            return;
-          }
-        }
         const providerChannel = channels.includes(c) ? c : c.providerChannel;
         if (!directStream.startsWith('/iptv/media/') && !useProxy && !refreshed && providerChannel?.id) {
           if (spinner) {

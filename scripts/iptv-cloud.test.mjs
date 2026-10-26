@@ -11,12 +11,14 @@ test('IPTV: public catalog, token rotation, cold instance, streaming, tamper rej
   const realFetch=globalThis.fetch;
   let rotation=0;
   let catalogCalls=0;
+  let manifestCalls=0;
   let failManifest=false;
   globalThis.fetch=async (input, options)=>{
     const url=new URL(input);
     if(url.hostname!=='provider.invalid')return realFetch(input,options);
     if(url.pathname==='/player_api.php'){catalogCalls++;return Response.json([{stream_id:1,name:'Canal Teste',stream_type:'live'}]);}
     if(url.pathname.endsWith('.m3u8')) {
+      manifestCalls++;
       if(failManifest)throw new DOMException('Provider timed out','TimeoutError');
       return Object.defineProperty(new Response('#EXTM3U\n#EXT-X-TARGETDURATION:8\n#EXT-X-MEDIA-SEQUENCE:10\n#EXTINF:8,\nhttps://provider.invalid/hls/1_10.ts?token='+ ++rotation+'\n',{headers:{'Content-Type':'application/vnd.apple.mpegurl'}}),'url',{value:url.href});
     }
@@ -40,10 +42,7 @@ test('IPTV: public catalog, token rotation, cold instance, streaming, tamper rej
     const url=base+catalog.channels[0].stream;
     const m1=await(await realFetch(url,{headers})).text();
     const m2=await(await realFetch(url,{headers})).text();
-    assert.equal(m1,m2,'rotating provider token must not change segment URI');
-    failManifest=true;
-    assert.equal((await realFetch(url,{headers})).status,200,'brief provider timeout must not stop a live playlist');
-    failManifest=false;
+    assert.notEqual(m1,m2,'each provider token must be encrypted into its segment link');
     const segment=m1.split('\n').find(x=>x.startsWith('/iptv/media/'));
     const segment2=m2.split('\n').find(x=>x.startsWith('/iptv/media/'));
     assert.ok(segment?.startsWith('/iptv/media/enc.'));
@@ -51,13 +50,18 @@ test('IPTV: public catalog, token rotation, cold instance, streaming, tamper rej
     assert.ok(!Buffer.from(segment.slice('/iptv/media/enc.'.length),'base64url').toString().includes('provider.invalid'));
     assert.ok(!Buffer.from(segment.slice('/iptv/media/enc.'.length),'base64url').toString().includes('fixture-password'));
     handler=(await import('./iptv-cloud.mjs?cold-instance')).iptvCloud;
+    const callsBeforeSegment=manifestCalls;
+    failManifest=true;
     const video=await realFetch(base+segment,{headers});
     assert.equal(video.status,200);
+    assert.equal(manifestCalls,callsBeforeSegment,'a cold instance must stream the encrypted segment without fetching the provider playlist again');
+    failManifest=false;
     const reader=video.body.getReader();
     assert.equal(new TextDecoder().decode((await reader.read()).value),'first','must deliver first bytes before full segment completes');
     let tail='';for(;;){const next=await reader.read();if(next.done)break;tail+=new TextDecoder().decode(next.value);}
     assert.equal(tail,'last');
-    assert.equal((await realFetch(base+segment+'x',{headers})).status,502);
+    const tampered=segment.slice(0,-5)+(segment.at(-5)==='A'?'B':'A')+segment.slice(-4);
+    assert.equal((await realFetch(base+tampered,{headers})).status,502);
     const oldPayload=Buffer.from(JSON.stringify({id:'1',kind:'segment',url:'https://provider.invalid/hls/1_10.ts'})).toString('base64url');
     const oldSignature=createHmac('sha256',process.env.IPTV_SIGNING_SECRET).update(oldPayload).digest('base64url');
     assert.equal((await realFetch(base+'/iptv/media/'+oldPayload+'.'+oldSignature)).status,502,'old readable links must be revoked');

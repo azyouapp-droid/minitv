@@ -5,7 +5,6 @@ import { getTodayEvents } from './sports-events.mjs';
 
 const channelsCache = { expires: 0, value: null };
 const mediaCache = new Map();
-const manifestCache = new Map();
 const manifestRequests = new Map();
 const MEDIA_WINDOW_MS = 10 * 60 * 1000;
 const MEDIA_MAX_AGE_MS = 2 * MEDIA_WINDOW_MS;
@@ -22,8 +21,8 @@ function equal(a, b) { const x=Buffer.from(a || ''), y=Buffer.from(b || ''); ret
 function token(payload, cfg) { const data=Buffer.from(JSON.stringify(payload)).toString('base64url'); return data+'.'+signature(data,cfg); }
 function mediaKey(cfg) { return createHash('sha256').update('minitv-media-v1:').update(cfg.secret).digest(); }
 function sealMedia(payload, cfg) {
-  // Overlapping HLS segments must keep the same URI across playlist refreshes.
-  // A fixed ten-minute window makes the encrypted URI stable while it is live.
+  // Encrypt the complete provider URL so a segment request needs no second
+  // playlist request or instance-local lookup on a serverless cold start.
   const expires=(Math.floor(Date.now()/MEDIA_WINDOW_MS)+2)*MEDIA_WINDOW_MS;
   const plain=JSON.stringify({...payload,expires});
   const iv=createHmac('sha256',cfg.secret).update('minitv-media-iv-v1:').update(plain).digest().subarray(0,12);
@@ -76,30 +75,19 @@ async function fetchManifest(id,cfg) {
   const remember=value=>{
     const absolute=new URL(value,response.url);
     if(!['http:','https:'].includes(absolute.protocol))throw new Error('Trecho inválido');
-    const stable=canonical(absolute.href);
-    mediaCache.set(id+'|'+stable,{url:absolute.href,expires:Date.now()+120000});
-    return route({id,kind:'segment',url:stable},cfg);
+    mediaCache.set(id+'|'+canonical(absolute.href),{url:absolute.href,expires:Date.now()+120000});
+    return route({id,kind:'segment',url:absolute.href,version:2},cfg);
   };
-  // The provider returns media playlists for /live/...m3u8. Keep stable
-  // signed segment URLs across token rotations and independent instances.
   if (text.includes('#EXT-X-STREAM-INF')) throw new Error('Playlist master não suportada por este adaptador');
   if (mediaCache.size>20000) for (const [key,value] of mediaCache) if(value.expires<Date.now()) mediaCache.delete(key);
-  const rewritten=text.split(/\r?\n/).map(line=>line.startsWith('#')?line.replace(/URI="([^"]+)"/g,(_,uri)=>'URI="'+remember(uri)+'"'):line.trim()?remember(line.trim()):line).join('\n');
-  manifestCache.set(id,{body:rewritten,time:Date.now()});
-  return rewritten;
+  return text.split(/\r?\n/).map(line=>line.startsWith('#')?line.replace(/URI="([^"]+)"/g,(_,uri)=>'URI="'+remember(uri)+'"'):line.trim()?remember(line.trim()):line).join('\n');
 }
 async function manifest(id,cfg) {
   if(!manifestRequests.has(id)) {
     const pending=fetchManifest(id,cfg).finally(()=>manifestRequests.delete(id));
     manifestRequests.set(id,pending);
   }
-  try { return await manifestRequests.get(id); }
-  catch(error) {
-    // A short provider outage should not permanently stop an active live player.
-    const previous=manifestCache.get(id);
-    if(previous && Date.now()-previous.time<90000)return previous.body;
-    throw error;
-  }
+  return manifestRequests.get(id);
 }
 export async function iptvCloud(req,res) {
   const path=new URL(req.url,'http://localhost').pathname;
@@ -135,9 +123,17 @@ export async function iptvCloud(req,res) {
     const data=untoken(path.slice('/iptv/media/'.length),cfg);
     if(data.kind==='manifest'){const text=await manifest(data.id,cfg);res.writeHead(200,{'Content-Type':'application/vnd.apple.mpegurl'});res.end(text);return true;}
     if(data.kind!=='segment')throw new Error('Link inválido');
-    const key=data.id+'|'+data.url;
-    if(!mediaCache.has(key)||mediaCache.get(key).expires<Date.now())await manifest(data.id,cfg);
-    const target=mediaCache.get(key)?.url;
+    let target;
+    if(data.version===2) {
+      const upstreamUrl=new URL(data.url);
+      if(!['http:','https:'].includes(upstreamUrl.protocol))throw new Error('Trecho inválido');
+      target=upstreamUrl.href;
+    } else {
+      // Older encrypted links remain usable until their short expiry.
+      const key=data.id+'|'+data.url;
+      if(!mediaCache.has(key)||mediaCache.get(key).expires<Date.now())await manifest(data.id,cfg);
+      target=mediaCache.get(key)?.url;
+    }
     if(!target){res.writeHead(410);res.end('Trecho expirado');return true;}
     const abort=new AbortController();res.once('close',()=>{if(!res.writableFinished)abort.abort();});
     const range=typeof req.headers.range==='string' && /^bytes=\d{1,15}-(?:\d{0,15})?$/.test(req.headers.range) ? req.headers.range : null;
