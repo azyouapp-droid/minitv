@@ -1591,6 +1591,9 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
       if (window.Hls && Hls.isSupported()) {
         hls = new Hls({
           enableWorker: true,
+          // O provedor troca o token de URLs para o mesmo media sequence.
+          // O HLS.js 1.6 trata isso como erro de parsing, embora o trecho seja válido.
+          ignorePlaylistParsingErrors: directStream.startsWith('/iptv/media/'),
           lowLatencyMode: false,
           liveSyncDurationCount: 6,
           maxBufferLength: 60,

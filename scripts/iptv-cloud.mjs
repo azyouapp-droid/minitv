@@ -72,6 +72,12 @@ async function fetchManifest(id,cfg) {
   if (!response.ok) throw new Error('Canal indisponível');
   const text=await response.text();
   if (!text.trimStart().startsWith('#EXTM3U')) throw new Error('Playlist inválida');
+  const lines=text.split(/\r?\n/);
+  const segments=lines.filter(line=>line.trim() && !line.startsWith('#'));
+  const durations=lines.filter(line=>line.startsWith('#EXTINF:'));
+  if (!lines.some(line=>/^#EXT-X-TARGETDURATION:[1-9]\d*$/.test(line)) ||
+      !lines.some(line=>/^#EXT-X-MEDIA-SEQUENCE:\d+$/.test(line)) ||
+      !segments.length || segments.length!==durations.length) throw new Error('Playlist incompleta');
   const remember=value=>{
     const absolute=new URL(value,response.url);
     if(!['http:','https:'].includes(absolute.protocol))throw new Error('Trecho inválido');
