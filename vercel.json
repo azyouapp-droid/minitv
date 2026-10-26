@@ -35,22 +35,6 @@
       "destination": "/api/index?iptvPath=/iptv/:path*"
     },
     {
-      "source": "/stream",
-      "destination": "/api/index"
-    },
-    {
-      "source": "/m3u8",
-      "destination": "/api/index"
-    },
-    {
-      "source": "/segment",
-      "destination": "/api/index"
-    },
-    {
-      "source": "/proxy-player",
-      "destination": "/api/index"
-    },
-    {
       "source": "/refresh",
       "destination": "/api/index"
     },

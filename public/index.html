@@ -887,7 +887,12 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
             if (epg && epg.current) {
               const prog = document.createElement('p');
               prog.className = 'card-epg-line';
-              prog.innerHTML = `<span class="card-epg-now">Agora:</span> <strong>${epg.current.title}</strong>`;
+              const nowLabel = document.createElement('span');
+              nowLabel.className = 'card-epg-now';
+              nowLabel.textContent = 'Agora:';
+              const programTitle = document.createElement('strong');
+              programTitle.textContent = epg.current.title;
+              prog.append(nowLabel, document.createTextNode(' '), programTitle);
               prog.title = epg.current.desc || epg.current.title;
               epgBox.append(prog);
 
@@ -1028,8 +1033,25 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
       $('current-fav').textContent=selected&&saved.has(key(selected))?'♥':'♡';
       $('current-fav').classList.toggle('saved',!!selected&&saved.has(key(selected)));
       if(selected){
-        const nowLogo = selected.image ? `<img src="${selected.image}" class="now-logo" alt="">` : '';
-        $('now').innerHTML = `<div class="now-strip-content">${nowLogo}<strong>${selected.name}</strong><span class="now-bullet">•</span><span class="now-status">Assistindo agora</span></div>`;
+        const nowStrip = document.createElement('div');
+        nowStrip.className = 'now-strip-content';
+        if (selected.image) {
+          const nowLogo = document.createElement('img');
+          nowLogo.src = selected.image;
+          nowLogo.className = 'now-logo';
+          nowLogo.alt = '';
+          nowStrip.append(nowLogo);
+        }
+        const nowTitle = document.createElement('strong');
+        nowTitle.textContent = selected.name;
+        const nowBullet = document.createElement('span');
+        nowBullet.className = 'now-bullet';
+        nowBullet.textContent = '•';
+        const nowStatus = document.createElement('span');
+        nowStatus.className = 'now-status';
+        nowStatus.textContent = 'Assistindo agora';
+        nowStrip.append(nowTitle, nowBullet, nowStatus);
+        $('now').replaceChildren(nowStrip);
         $('channel-type').textContent=selected.isEvent ? 'Evento Esportivo' : categoryOf(selected);
         $('title').textContent=selected.name;
 
@@ -1730,7 +1752,7 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
       $('reload').disabled = true;
 
       try {
-        let response = await fetch('/iptv/catalog', { cache: 'no-store' });
+        let response = await fetch('/iptv/catalog');
         if (!response.ok) throw new Error('Falha ao baixar catálogo');
 
         const catalog = await response.json();
