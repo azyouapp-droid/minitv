@@ -231,6 +231,7 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
     }
 
     function navigate(mode){
+      cancelAdRevealScroll();
       $('search').value='';
       $('category').value='all';
       if(isExpanded()){
@@ -355,7 +356,7 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
       control.hidden = false;
       select.onchange = () => {
         const chosen = variants.find(variant => variant.channel.id === select.value);
-        if (chosen && key(chosen.channel) !== key(selected)) playChannel(chosen.channel);
+        if (chosen && key(chosen.channel) !== key(selected)) playChannel(chosen.channel, false, false, true);
       };
     }
 
@@ -680,7 +681,7 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
             const target = getChannelVariant(currentCh);
             const act = current && current.baseKey === target.baseKey && current.region === target.region;
             if (!act) playChannel(currentCh);
-            else if (!isExpanded()) { setMode('live'); render(); }
+            else if (!isExpanded()) { setMode('live'); render(); revealPlayerThroughAds(); }
             wakeHud();
           };
 
@@ -990,6 +991,7 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
     });
 
     function stopPlayback() {
+      cancelAdRevealScroll();
       if (isExpanded()) exitExpanded();
       playbackSession++;
       playbackCleanup();
@@ -1049,8 +1051,62 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
     let watchdogTimer = null;
     let playbackSession = 0;
     let playbackCleanup = () => {};
+    let adScrollTimer = null;
+    let adScrollFrame = null;
+    let adScrollGeneration = 0;
 
-    async function playChannel(c, useProxy = false, refreshed = false) {
+    function cancelAdRevealScroll() {
+      adScrollGeneration++;
+      clearTimeout(adScrollTimer);
+      cancelAnimationFrame(adScrollFrame);
+    }
+
+    function revealPlayerThroughAds() {
+      if (!window.matchMedia('(max-width: 800px)').matches || isExpanded()) return;
+      cancelAdRevealScroll();
+      const generation = adScrollGeneration;
+      const ad = document.querySelector('.watch-panel .ad-native-wrap');
+      const player = $('player-wrapper');
+      if (!ad || !player) return;
+
+      adScrollTimer = setTimeout(() => {
+        if (generation !== adScrollGeneration || !selected) return;
+        const scrollRoot = document.scrollingElement || document.documentElement;
+        const maxScroll = Math.max(0, scrollRoot.scrollHeight - window.innerHeight);
+        const navHeight = document.querySelector('.bottom-nav')?.getBoundingClientRect().height || 0;
+        const adBottom = ad.getBoundingClientRect().bottom + scrollRoot.scrollTop;
+        scrollRoot.scrollTop = Math.min(maxScroll, Math.max(0, adBottom - window.innerHeight + navHeight + 20));
+
+        adScrollTimer = setTimeout(() => {
+          if (generation !== adScrollGeneration || !selected) return;
+          const from = scrollRoot.scrollTop;
+          const to = Math.max(0, player.getBoundingClientRect().top + from - 8);
+          const distance = from - to;
+          if (distance <= 0) return;
+          if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            scrollRoot.scrollTop = to;
+            return;
+          }
+          const duration = Math.min(8500, Math.max(4500, distance * 3.2));
+          const startedAt = performance.now();
+          const step = now => {
+            if (generation !== adScrollGeneration || !selected) return;
+            const progress = Math.min(1, (now - startedAt) / duration);
+            const eased = (1 - Math.cos(Math.PI * progress)) / 2;
+            scrollRoot.scrollTop = from + (to - from) * eased;
+            if (progress < 1) adScrollFrame = requestAnimationFrame(step);
+          };
+          adScrollFrame = requestAnimationFrame(step);
+        }, 850);
+      }, 500);
+    }
+
+    window.addEventListener('pointerdown', cancelAdRevealScroll, { passive: true });
+    window.addEventListener('touchstart', cancelAdRevealScroll, { passive: true });
+    window.addEventListener('wheel', cancelAdRevealScroll, { passive: true });
+    window.addEventListener('keydown', cancelAdRevealScroll);
+
+    async function playChannel(c, useProxy = false, refreshed = false, skipAdReveal = false) {
       const session = ++playbackSession;
       playbackCleanup();
       playbackCleanup = () => {};
@@ -1058,9 +1114,11 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
       if (isExpanded()) {
         $('app').classList.remove('browse-open');
       }
+      const shouldRevealAds = !useProxy && !refreshed && !skipAdReveal;
       selected = c;
       setMode(isExpanded() ? 'explore' : 'live');
       render();
+      if (shouldRevealAds) revealPlayerThroughAds();
 
       $('placeholder').style.display = 'none';
       $('title').textContent = c.name;
