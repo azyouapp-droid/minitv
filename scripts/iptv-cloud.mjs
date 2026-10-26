@@ -1,10 +1,12 @@
-import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createCipheriv, createDecipheriv, createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { getTodayEvents } from './sports-events.mjs';
 
 const channelsCache = { expires: 0, value: null };
 const mediaCache = new Map();
+const MEDIA_WINDOW_MS = 10 * 60 * 1000;
+const MEDIA_MAX_AGE_MS = 2 * MEDIA_WINDOW_MS;
 const canonical = value => { const u = new URL(value); u.searchParams.delete('token'); return u.href; };
 function settings() {
   const playlist = process.env.IPTV_PLAYLIST_URL;
@@ -18,9 +20,13 @@ function equal(a, b) { const x=Buffer.from(a || ''), y=Buffer.from(b || ''); ret
 function token(payload, cfg) { const data=Buffer.from(JSON.stringify(payload)).toString('base64url'); return data+'.'+signature(data,cfg); }
 function mediaKey(cfg) { return createHash('sha256').update('minitv-media-v1:').update(cfg.secret).digest(); }
 function sealMedia(payload, cfg) {
-  const iv=randomBytes(12);
+  // Overlapping HLS segments must keep the same URI across playlist refreshes.
+  // A fixed ten-minute window makes the encrypted URI stable while it is live.
+  const expires=(Math.floor(Date.now()/MEDIA_WINDOW_MS)+2)*MEDIA_WINDOW_MS;
+  const plain=JSON.stringify({...payload,expires});
+  const iv=createHmac('sha256',cfg.secret).update('minitv-media-iv-v1:').update(plain).digest().subarray(0,12);
   const cipher=createCipheriv('aes-256-gcm',mediaKey(cfg),iv);
-  const encrypted=Buffer.concat([cipher.update(JSON.stringify({...payload,expires:Date.now()+180000}),'utf8'),cipher.final()]);
+  const encrypted=Buffer.concat([cipher.update(plain,'utf8'),cipher.final()]);
   return 'enc.'+Buffer.concat([iv,cipher.getAuthTag(),encrypted]).toString('base64url');
 }
 function openMedia(value,cfg) {
@@ -31,7 +37,7 @@ function openMedia(value,cfg) {
   decipher.setAuthTag(bytes.subarray(12,28));
   const data=JSON.parse(Buffer.concat([decipher.update(bytes.subarray(28)),decipher.final()]).toString());
   const now=Date.now();
-  if(data.kind!=='segment'||!Number.isSafeInteger(data.expires)||data.expires<now||data.expires>now+180000)throw new Error('Link expirado');
+  if(data.kind!=='segment'||!Number.isSafeInteger(data.expires)||data.expires<now||data.expires>now+MEDIA_MAX_AGE_MS)throw new Error('Link expirado');
   return data;
 }
 function untoken(value, cfg) {

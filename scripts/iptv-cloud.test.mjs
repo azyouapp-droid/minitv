@@ -36,6 +36,7 @@ test('IPTV: public catalog, token rotation, cold instance, streaming, tamper rej
     const url=base+catalog.channels[0].stream;
     const m1=await(await realFetch(url,{headers})).text();
     const m2=await(await realFetch(url,{headers})).text();
+    assert.equal(m1,m2,'rotating provider token must not change segment URI');
     const segment=m1.split('\n').find(x=>x.startsWith('/iptv/media/'));
     const segment2=m2.split('\n').find(x=>x.startsWith('/iptv/media/'));
     assert.ok(segment?.startsWith('/iptv/media/enc.'));
