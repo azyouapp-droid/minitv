@@ -1422,6 +1422,39 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
     window.addEventListener('wheel', cancelAdRevealScroll, { passive: true });
     window.addEventListener('keydown', cancelAdRevealScroll);
 
+    // BEGIN media recovery helper
+    function createMediaErrorRecovery({ video, getHls, isCurrent, resume, fail }) {
+      let active = false;
+      let resumeRequested = false;
+      let timer = null;
+      let attempts = [];
+      const clear = () => { clearTimeout(timer); timer = null; active = false; resumeRequested = false; };
+      return {
+        attempt() {
+          if (active) return true;
+          if (!isCurrent() || !video.error || !getHls()) return false;
+          const now = Date.now();
+          attempts = attempts.filter(time => now - time < 300000);
+          if (attempts.length >= 2) return false;
+          attempts.push(now);
+          active = true;
+          resumeRequested = false;
+          timer = setTimeout(() => { if (active && isCurrent()) { clear(); fail(); } }, 20000);
+          try { getHls().recoverMediaError(); }
+          catch { clear(); return false; }
+          return true;
+        },
+        ready() {
+          if (!active || resumeRequested || !isCurrent()) return;
+          resumeRequested = true;
+          resume();
+        },
+        playing() { if (active) clear(); },
+        cleanup() { clear(); }
+      };
+    }
+    // END media recovery helper
+
     async function playChannel(c, useProxy = false, refreshed = false, skipAdReveal = false) {
       const session = ++playbackSession;
       playbackCleanup();
@@ -1537,7 +1570,7 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
       };
 
       let failed = false;
-      let mediaRecoveries = 0;
+      let mediaRecovery = null;
       const failPlayback = async () => {
         if (!isCurrent() || failed) return;
         failed = true;
@@ -1581,6 +1614,7 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
         clearInterval(bufferMonitor);
         clearInterval(watchdogTimer);
         clearTimeout(waitingTimeout);
+        mediaRecovery?.cleanup();
         video.onerror = null;
         video.onplaying = null;
         video.oncanplay = null;
@@ -1589,6 +1623,7 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
       };
 
       if (window.Hls && Hls.isSupported()) {
+        mediaRecovery = createMediaErrorRecovery({video, getHls: () => hls, isCurrent, resume: startPlayback, fail: failPlayback});
         hls = new Hls({
           enableWorker: true,
           // O provedor troca o token de URLs para o mesmo media sequence.
@@ -1617,12 +1652,14 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
         });
 
         video.onplaying = () => {
+          mediaRecovery.playing();
           hideSpinner();
           $('status').textContent = `Assistindo ${c.name} (Ao Vivo)`;
         };
 
         video.oncanplay = () => {
           hideSpinner();
+          mediaRecovery.ready();
         };
 
         video.ontimeupdate = () => {
@@ -1664,9 +1701,7 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
           if (!isCurrent() || failed) return;
           console.warn('[HLS ERROR]', data.type, data.details, data.fatal, String(data.reason || data.error?.message || '').slice(0, 160));
           if (!data.fatal) return;
-          if (data.type === Hls.ErrorTypes.MEDIA_ERROR && mediaRecoveries++ < 1) {
-            hls.recoverMediaError();
-          } else {
+          if (data.type !== Hls.ErrorTypes.MEDIA_ERROR || !mediaRecovery.attempt()) {
             failPlayback();
           }
         });
