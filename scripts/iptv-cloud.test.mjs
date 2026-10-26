@@ -23,7 +23,7 @@ test('IPTV: public catalog, token rotation, cold instance, streaming, tamper rej
       return Object.defineProperty(new Response('#EXTM3U\n#EXT-X-TARGETDURATION:8\n#EXT-X-MEDIA-SEQUENCE:10\n#EXTINF:8,\nhttps://provider.invalid/hls/1_10.ts?token='+ ++rotation+'\n',{headers:{'Content-Type':'application/vnd.apple.mpegurl'}}),'url',{value:url.href});
     }
     assert.equal(url.pathname,'/hls/1_10.ts');
-    assert.ok(url.searchParams.get('token'));
+    if(Number(url.searchParams.get('token'))!==rotation)return new Response('expired',{status:404});
     return new Response(new ReadableStream({start(controller){controller.enqueue(new TextEncoder().encode('first'));setTimeout(()=>{controller.enqueue(new TextEncoder().encode('last'));controller.close();},150);}}),{headers:{'Content-Type':'video/mp2t'}});
   };
   let handler=iptvCloud;
@@ -42,7 +42,7 @@ test('IPTV: public catalog, token rotation, cold instance, streaming, tamper rej
     const url=base+catalog.channels[0].stream;
     const m1=await(await realFetch(url,{headers})).text();
     const m2=await(await realFetch(url,{headers})).text();
-    assert.notEqual(m1,m2,'each provider token must be encrypted into its segment link');
+    assert.equal(m1,m2,'segment links stay stable while provider tokens rotate');
     const segment=m1.split('\n').find(x=>x.startsWith('/iptv/media/'));
     const segment2=m2.split('\n').find(x=>x.startsWith('/iptv/media/'));
     assert.ok(segment?.startsWith('/iptv/media/enc.'));
@@ -51,15 +51,19 @@ test('IPTV: public catalog, token rotation, cold instance, streaming, tamper rej
     assert.ok(!Buffer.from(segment.slice('/iptv/media/enc.'.length),'base64url').toString().includes('fixture-password'));
     handler=(await import('./iptv-cloud.mjs?cold-instance')).iptvCloud;
     const callsBeforeSegment=manifestCalls;
-    failManifest=true;
     const video=await realFetch(base+segment,{headers});
     assert.equal(video.status,200);
-    assert.equal(manifestCalls,callsBeforeSegment,'a cold instance must stream the encrypted segment without fetching the provider playlist again');
-    failManifest=false;
+    assert.equal(manifestCalls,callsBeforeSegment+1,'a cold instance must obtain a fresh provider token');
     const reader=video.body.getReader();
     assert.equal(new TextDecoder().decode((await reader.read()).value),'first','must deliver first bytes before full segment completes');
     let tail='';for(;;){const next=await reader.read();if(next.done)break;tail+=new TextDecoder().decode(next.value);}
     assert.equal(tail,'last');
+    await globalThis.fetch('https://provider.invalid/live/fixture-user/fixture-password/1.m3u8'); // rotate outside the cold instance
+    const callsBeforeRetry=manifestCalls;
+    const retried=await realFetch(base+segment,{headers});
+    assert.equal(retried.status,200,'expired segment token must be retried with a fresh token');
+    assert.equal(manifestCalls,callsBeforeRetry+1);
+    await retried.arrayBuffer();
     const tampered=segment.slice(0,-5)+(segment.at(-5)==='A'?'B':'A')+segment.slice(-4);
     assert.equal((await realFetch(base+tampered,{headers})).status,502);
     const oldPayload=Buffer.from(JSON.stringify({id:'1',kind:'segment',url:'https://provider.invalid/hls/1_10.ts'})).toString('base64url');

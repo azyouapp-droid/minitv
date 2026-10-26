@@ -21,8 +21,7 @@ function equal(a, b) { const x=Buffer.from(a || ''), y=Buffer.from(b || ''); ret
 function token(payload, cfg) { const data=Buffer.from(JSON.stringify(payload)).toString('base64url'); return data+'.'+signature(data,cfg); }
 function mediaKey(cfg) { return createHash('sha256').update('minitv-media-v1:').update(cfg.secret).digest(); }
 function sealMedia(payload, cfg) {
-  // Encrypt the complete provider URL so a segment request needs no second
-  // playlist request or instance-local lookup on a serverless cold start.
+  // Keep the segment identity stable while the provider rotates short-lived tokens.
   const expires=(Math.floor(Date.now()/MEDIA_WINDOW_MS)+2)*MEDIA_WINDOW_MS;
   const plain=JSON.stringify({...payload,expires});
   const iv=createHmac('sha256',cfg.secret).update('minitv-media-iv-v1:').update(plain).digest().subarray(0,12);
@@ -81,8 +80,9 @@ async function fetchManifest(id,cfg) {
   const remember=value=>{
     const absolute=new URL(value,response.url);
     if(!['http:','https:'].includes(absolute.protocol))throw new Error('Trecho inválido');
-    mediaCache.set(id+'|'+canonical(absolute.href),{url:absolute.href,expires:Date.now()+120000});
-    return route({id,kind:'segment',url:absolute.href,version:2},cfg);
+    const stable=canonical(absolute.href);
+    mediaCache.set(id+'|'+stable,{url:absolute.href,expires:Date.now()+3000});
+    return route({id,kind:'segment',url:stable,version:3},cfg);
   };
   if (text.includes('#EXT-X-STREAM-INF')) throw new Error('Playlist master não suportada por este adaptador');
   if (mediaCache.size>20000) for (const [key,value] of mediaCache) if(value.expires<Date.now()) mediaCache.delete(key);
@@ -129,6 +129,9 @@ export async function iptvCloud(req,res) {
     const data=untoken(path.slice('/iptv/media/'.length),cfg);
     if(data.kind==='manifest'){const text=await manifest(data.id,cfg);res.writeHead(200,{'Content-Type':'application/vnd.apple.mpegurl'});res.end(text);return true;}
     if(data.kind!=='segment')throw new Error('Link inválido');
+    if(!/^\d+$/.test(data.id))throw new Error('Canal inválido');
+    const stable=canonical(data.url);
+    const key=data.id+'|'+stable;
     let target;
     if(data.version===2) {
       const upstreamUrl=new URL(data.url);
@@ -136,7 +139,6 @@ export async function iptvCloud(req,res) {
       target=upstreamUrl.href;
     } else {
       // Older encrypted links remain usable until their short expiry.
-      const key=data.id+'|'+data.url;
       if(!mediaCache.has(key)||mediaCache.get(key).expires<Date.now())await manifest(data.id,cfg);
       target=mediaCache.get(key)?.url;
     }
@@ -144,7 +146,13 @@ export async function iptvCloud(req,res) {
     const abort=new AbortController();res.once('close',()=>{if(!res.writableFinished)abort.abort();});
     const range=typeof req.headers.range==='string' && /^bytes=\d{1,15}-(?:\d{0,15})?$/.test(req.headers.range) ? req.headers.range : null;
     if(req.headers.range && !range){res.writeHead(416);res.end();return true;}
-    const upstream=await fetch(target,{signal:AbortSignal.any([abort.signal,AbortSignal.timeout(25000)]),headers:range?{Range:range}:{}});
+    const requestSegment=url=>fetch(url,{signal:AbortSignal.any([abort.signal,AbortSignal.timeout(25000)]),headers:range?{Range:range}:{}});
+    let upstream=await requestSegment(target);
+    if([401,403,404].includes(upstream.status)){
+      await manifest(data.id,cfg);
+      const fresh=mediaCache.get(key)?.url;
+      if(fresh && fresh!==target)upstream=await requestSegment(fresh);
+    }
     if(!upstream.ok)throw new Error('Trecho indisponível');
     res.statusCode=upstream.status;
     for(const name of ['content-type','content-length','content-range'])if(upstream.headers.has(name))res.setHeader(name,upstream.headers.get(name));
