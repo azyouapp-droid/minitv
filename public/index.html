@@ -129,6 +129,7 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
     let bufferMonitor = null;
     let epgData = new Map();
     let liveEvents = [];
+    let eventFeed = [];
     let matchCarouselTimer = null;
     let matchCarouselPausedUntil = 0;
 
@@ -1681,6 +1682,19 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
       }
     }
 
+    function syncEventFeed() {
+      liveEvents = eventFeed.map(event => {
+        const sourceChannel = eventChannelFor(event);
+        const match = sourceChannel && parseMatchChannel(sourceChannel);
+        if (!match) return null;
+        const start = new Date(`${event.date}T${match.time}:00-03:00`);
+        return { ...event, sourceChannel, time_start: start.toISOString(), time_end: new Date(start.getTime() + 3 * 60 * 60 * 1000).toISOString() };
+      }).filter(Boolean);
+      renderMatchBanner();
+      refreshCategories();
+      render();
+    }
+
     async function loadEvents() {
       try {
         const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
@@ -1689,16 +1703,10 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
         const data = await resp.json();
         if (Array.isArray(data)) {
           const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-          liveEvents = data.filter(event => event.date === today).map(event => {
-            const sourceChannel = eventChannelFor(event);
-            const match = sourceChannel && parseMatchChannel(sourceChannel);
-            if (!match) return null;
-            const start = new Date(`${event.date}T${match.time}:00-03:00`);
-            return { ...event, sourceChannel, time_start: start.toISOString(), time_end: new Date(start.getTime() + 3 * 60 * 60 * 1000).toISOString() };
-          }).filter(Boolean);
-          renderMatchBanner();
-          refreshCategories();
-          render();
+          eventFeed = data.filter(event => event.date === today);
+          // The event request runs alongside the channel catalog request. If it
+          // finishes first, keep the API results and match them once channels arrive.
+          if (channels.length) syncEventFeed();
         }
       } catch (e) {
         console.warn('Não foi possível carregar os eventos no momento.');
@@ -1744,6 +1752,7 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
         if(selected)selected=channels.find(c=>key(c)===key(selected))||selected;
         refreshCategories();
         render();
+        if (eventFeed.length) syncEventFeed();
 
         let updatedTime = '';
         if (catalog.retrievedAt) {
@@ -1760,9 +1769,8 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
           ? `Catálogo sincronizado em ${updatedTime} (${channels.length} canais carregados).`
           : `Catálogo carregado (${channels.length} canais).`;
 
-        // Carregar EPG e Eventos de Jogos em segundo plano
+        // O EPG continua em segundo plano; os eventos já foram buscados em paralelo.
         loadEPG();
-        loadEvents();
       } catch (err) {
         console.error(err);
         $('count').textContent = 'Erro ao carregar';
@@ -1801,5 +1809,6 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
     setInterval(() => { if (channels.length) renderMatchBanner(); }, 60000);
 
     syncAdLocation();
+    loadEvents();
     loadCatalog();
   </script></body></html>
