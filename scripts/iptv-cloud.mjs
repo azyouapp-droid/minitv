@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
+import { getTodayEvents } from './sports-events.mjs';
 
 const channelsCache = { expires: 0, value: null };
 const mediaCache = new Map();
@@ -55,11 +56,21 @@ async function manifest(id,cfg) {
 export async function iptvCloud(req,res) {
   const path=new URL(req.url,'http://localhost').pathname;
   const relevant=path==='/refresh'||path==='/events'||path.startsWith('/iptv/');
+  if(path==='/events'){
+    try {
+      const events=await getTodayEvents();
+      res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'public, max-age=300, s-maxage=86400, stale-while-revalidate=86400'});
+      res.end(JSON.stringify(events));
+    } catch {
+      res.writeHead(502,{'Content-Type':'application/json','Cache-Control':'no-store'});
+      res.end('[]');
+    }
+    return true;
+  }
   if (!relevant || !process.env.IPTV_PLAYLIST_URL) return false;
   res.setHeader('Cache-Control','private, no-store');
   try {
     const cfg=settings();
-    if(path==='/events'){res.writeHead(200,{'Content-Type':'application/json'});res.end('[]');return true;}
     if(path==='/refresh'||path==='/iptv/catalog'){
       if(path==='/refresh')channelsCache.expires=0;
       const data=await catalog(cfg);res.writeHead(200,{'Content-Type':'application/json'});res.end(JSON.stringify(data));return true;

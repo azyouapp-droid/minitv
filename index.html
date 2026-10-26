@@ -80,9 +80,38 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
 .app.expanded .bottom-nav>.search-button{width:54px;height:54px;border-width:5px;transform:translateY(-8px)}
 .app.expanded .browse{position:absolute!important;max-height:calc(var(--expanded-height,100dvh) - 150px)!important;bottom:84px!important;padding:12px 16px!important}
 .app.expanded .browse .chips{display:flex!important;flex-wrap:nowrap!important;overflow:auto}
+.app.expanded .browse .chips,.app[data-mode="explore"] .browse>.chips{overflow-x:auto;cursor:grab;touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.app.expanded .browse .chips.is-dragging,.app[data-mode="explore"] .browse>.chips.is-dragging{cursor:grabbing;scroll-behavior:auto}
 .app.expanded .browse .channel-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}
 .app.expanded .player-top{left:max(12px,env(safe-area-inset-left));top:max(12px,env(safe-area-inset-top));right:205px}
 .app.expanded .player-controls{right:max(12px,env(safe-area-inset-right));top:max(12px,env(safe-area-inset-top));bottom:auto}
+.match-banner{width:100%;max-width:960px;margin:0 auto 28px;border-radius:23px;padding:22px 24px;background:linear-gradient(125deg,#061a3a,#093c69 68%,#0758aa);color:#fff;box-shadow:0 12px 28px #0a4b881f;overflow:hidden}
+.match-banner[hidden]{display:none}
+.match-banner-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.match-banner-label{font:800 11px Outfit,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#83c9ff}
+.match-banner-title{font:800 23px Outfit,sans-serif;letter-spacing:-.35px;margin:0}
+.match-banner-date{font-size:12px;color:#c6e2ff;white-space:nowrap}
+.match-banner-list{display:grid;grid-auto-columns:minmax(220px,calc((100% - 22px)/3));grid-auto-flow:column;gap:11px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;scroll-behavior:smooth;padding-bottom:2px;cursor:grab;touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch;user-select:none}
+.match-banner-list.is-dragging{cursor:grabbing;scroll-snap-type:none;scroll-behavior:auto}
+.match-banner-list::-webkit-scrollbar{display:none}
+.match-banner-card{min-width:0;min-height:170px;text-align:left;border:1px solid #ffffff30;border-radius:16px;background:#ffffff15;color:white;padding:13px;scroll-snap-align:start;display:flex;flex-direction:column;justify-content:space-between;gap:10px}
+.match-banner-card:hover,.match-banner-card:focus-visible{background:#ffffff29;transform:translateY(-2px)}
+.app:not([data-mode="home"]) .match-banner{display:none}
+.match-banner-meta{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:4px;min-width:0}
+.match-banner-league{display:flex;align-items:center;gap:6px;min-width:0;max-width:100%;color:#b9dcff;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+.match-banner-league img{width:22px;height:22px;object-fit:contain;flex:none}
+.match-banner-league span{min-width:0;white-space:normal;overflow-wrap:anywhere;line-height:1.2}
+.match-banner-time{font-size:10px;font-weight:800;color:#9fd7ff;white-space:nowrap}
+.match-banner-matchup{display:grid;grid-template-columns:minmax(0,1fr) 38px minmax(0,1fr);grid-template-rows:auto auto;align-items:center;column-gap:5px;row-gap:4px;min-width:0}
+.match-banner-time{grid-column:2;grid-row:1;justify-self:center}
+.match-banner-team{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-width:0;color:#fff;font:700 12px Outfit,sans-serif;line-height:1.15;text-align:center}
+.match-banner-team:first-of-type{grid-column:1;grid-row:2}
+.match-banner-team:last-of-type{grid-column:3;grid-row:2}
+.match-banner-team img{width:30px;height:30px;object-fit:contain;flex:none;background:#ffffffed;border-radius:50%;padding:3px}
+.match-banner-team span{width:100%;min-width:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;text-overflow:ellipsis}
+.match-banner-vs{grid-column:2;grid-row:2;text-align:center;color:#8dc9ff;font-size:9px;font-weight:900}
+.match-banner-action{font-size:10px;font-weight:800;color:#cbe7ff}
+@media(max-width:540px){.match-banner{margin:0 0 23px;padding:18px;border-radius:19px}.match-banner-title{font-size:20px}.match-banner-list{grid-auto-columns:minmax(230px,82%)}.match-banner-card{min-height:170px;padding:12px}.match-banner-team{font-size:11px}.match-banner-team img{width:27px;height:27px}.match-banner-date{font-size:11px}}
 .app.expanded .player-top-channel-tag{max-width:180px}
 .app.expanded .volume-control input{width:65px}
 .app.expanded #expand-channel{display:none}
@@ -90,7 +119,7 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
 
 </style></head><body><div class="app" id="app" data-mode="home">
 <header><a class="brand" href="#" id="brand">mini<span>tv</span></a></header>
-<main><section class="home-panel" id="home-panel"><h1>Sua TV,<br>do seu jeito</h1><div class="home-marquee-wrap" id="home-marquee-wrap"><div class="home-marquee-track" id="home-chips"></div></div><div class="home-hero-slot" id="home-hero-slot"><div class="home-empty-hero" id="home-empty-hero"><img class="empty-hero-bg" src="/hero-collage.jpg" alt="Canais de TV" loading="eager" fetchpriority="high"><div class="empty-hero-overlay"></div><div class="empty-hero-glow"></div><div class="empty-hero-glow-2"></div><div class="empty-hero-content"><div class="empty-hero-badge"><span class="pulse-dot"></span><span>Mini TV · Ao Vivo</span></div><h2>Pronto para assistir?</h2><p>Centenas de canais ao vivo de esportes, filmes, notícias e variedades disponíveis com transmissão contínua.</p><div class="empty-hero-actions"><button class="empty-hero-btn primary-glow" id="hero-explore-btn" aria-label="Escolher canal"><svg viewBox="0 0 24 24"><circle cx="10" cy="10" r="7"/><path d="m15 15 6 6"/></svg><span>Escolher um canal</span></button></div><div class="empty-hero-shortcuts"><span class="empty-shortcuts-label">Atalhos:</span><div class="empty-tags"><button class="empty-tag" data-cat="Esportes">⚽ Esportes</button><button class="empty-tag" data-cat="Filmes e séries">🎬 Filmes</button><button class="empty-tag" data-cat="Canais abertos">📺 Abertos</button><button class="empty-tag" data-cat="Notícias">📰 Notícias</button></div></div></div></div></div><div id="home-ad-slot"></div></section>
+<main><section class="match-banner" id="match-banner" aria-label="Jogos do dia" hidden><div class="match-banner-head"><h2 class="match-banner-title">Jogos em destaque</h2></div><div class="match-banner-list" id="match-banner-list"></div></section><section class="home-panel" id="home-panel"><h1>Sua TV,<br>do seu jeito</h1><div class="home-marquee-wrap" id="home-marquee-wrap"><div class="home-marquee-track" id="home-chips"></div></div><div class="home-hero-slot" id="home-hero-slot"><div class="home-empty-hero" id="home-empty-hero"><img class="empty-hero-bg" src="/hero-collage.jpg" alt="Canais de TV" loading="eager" fetchpriority="high"><div class="empty-hero-overlay"></div><div class="empty-hero-glow"></div><div class="empty-hero-glow-2"></div><div class="empty-hero-content"><div class="empty-hero-badge"><span class="pulse-dot"></span><span>Mini TV · Ao Vivo</span></div><h2>Pronto para assistir?</h2><p>Centenas de canais ao vivo de esportes, filmes, notícias e variedades disponíveis com transmissão contínua.</p><div class="empty-hero-actions"><button class="empty-hero-btn primary-glow" id="hero-explore-btn" aria-label="Escolher canal"><svg viewBox="0 0 24 24"><circle cx="10" cy="10" r="7"/><path d="m15 15 6 6"/></svg><span>Escolher um canal</span></button></div><div class="empty-hero-shortcuts"><span class="empty-shortcuts-label">Atalhos:</span><div class="empty-tags"><button class="empty-tag" data-cat="Esportes">⚽ Esportes</button><button class="empty-tag" data-cat="Filmes e séries">🎬 Filmes</button><button class="empty-tag" data-cat="Canais abertos">📺 Abertos</button><button class="empty-tag" data-cat="Notícias">📰 Notícias</button></div></div></div></div></div><div id="home-ad-slot"></div></section>
 <section class="watch-panel"><div class="watch-player-slot" id="watch-player-slot"><div class="player-wrapper" id="player-wrapper"><video id="video" playsinline webkit-playsinline style="display:none"></video><div id="placeholder">Escolha um canal para começar</div><div id="player-spinner" class="player-spinner" style="display:none"><div class="spinner-ring"></div><span id="player-spinner-text">Sintonizando sinal...</span></div><div class="player-top"><div style="display:flex;align-items:center;gap:8px"><button id="back" class="glass-button" aria-label="Voltar aos canais">‹</button><span id="player-top-channel-tag" class="player-channel-tag"></span></div><div style="display:flex;align-items:center;gap:8px"><button id="stop-channel" class="stop-channel-btn" aria-label="Parar transmissão"><svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:currentColor;stroke:none"><rect x="4" y="4" width="16" height="16" rx="2"/></svg><span>Parar</span></button><button id="expand-channel" class="glass-button" aria-label="Ver grade de canais" title="Ver grade de canais">▦</button><span class="live-badge">● AO VIVO</span></div></div><div class="player-controls"><div class="volume-control"><button id="mute" aria-label="Silenciar"><svg viewBox="0 0 24 24"><path d="M11 4 6 8H2v8h4l5 4Z"/><path id="sound-waves" d="M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/></svg></button><input id="volume" type="range" min="0" max="1" step="0.05" value="1" aria-label="Volume"></div><label id="quality-control" hidden><select id="quality-select" aria-label="Qualidade do canal"></select></label><button id="fullscreen" class="glass-button" aria-label="Tela cheia"><svg viewBox="0 0 24 24"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></button></div></div></div><div id="now" class="now"></div><div class="channel-info-card"><div class="info-header"><div style="display:flex;align-items:center;gap:12px;min-width:0"><img id="player-channel-logo" class="player-channel-logo" style="display:none" alt="Logo"><div style="min-width:0"><span class="channel-type" id="channel-type">Ao vivo</span><h2 id="title" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Vamos assistir?</h2></div></div><button id="current-fav" class="favorite-button" aria-label="Favoritar canal atual">♡</button></div><div id="epg-details" class="epg-details" style="display:none"><div class="epg-details-header"><span>● Agora no canal</span></div><div class="epg-title" id="epg-prog-title"></div><p class="epg-desc" id="epg-prog-desc"></p><div class="epg-next" id="epg-next-box" style="display:none"><strong>A seguir:</strong> <span id="epg-prog-next"></span></div></div><span id="buffer-stat" hidden></span><p id="status" role="status" style="display:none"></p><div id="watch-ad-slot"><div class="ad-native-wrap"><script async="async" data-cfasync="false" src="https://czernik.org/21/998cd5868ec62c8cb78f1b7d9dd396e5"></script><div id="container-998cd5868ec62c8cb78f1b7d9dd396e5"></div></div></div></div></section>
 <section class="browse" id="browse"><div class="section-row"><h1 id="browse-title">Canais</h1><span id="count"></span></div><div class="search-wrap"><svg viewBox="0 0 24 24"><circle cx="10" cy="10" r="7"/><path d="m15 15 6 6"/></svg><input id="search" type="search" placeholder="Buscar canal" aria-label="Buscar canal"></div><select id="category" hidden><option value="all">Todos</option></select><div id="chips" class="chips" aria-label="Categorias"></div><div id="channels" class="channel-grid"></div><button id="load-more" class="chip" type="button" hidden>Carregar mais canais</button><p class="browse-hint">ⓘ &nbsp; O canal só muda ao tocar em Assistir.</p><button id="reload" class="text-button reload">↻ Atualizar canais</button></section></main>
 <nav class="bottom-nav" aria-label="Navegação principal"><button data-view="home" aria-label="Início"><svg viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v11h-6v-7H9v7H3Z"/></svg></button><button data-view="favorites" aria-label="Favoritos"><svg viewBox="0 0 24 24"><path d="M6 3h12v19l-6-4-6 4Z"/></svg></button><button id="nav-search" class="search-button" aria-label="Pesquisar canais"><svg viewBox="0 0 24 24"><circle cx="10" cy="10" r="7"/><path d="m15 15 6 6"/></svg></button><button data-view="notifications" aria-label="Notificações"><svg viewBox="0 0 24 24"><path d="M4 18h16l-2-4V9a6 6 0 0 0-12 0v5ZM9 21h6"/></svg></button><button data-view="settings" aria-label="Configurações"><svg viewBox="0 0 24 24"><path d="m9 3-1 3-3 1-2 3 2 2-1 4 3 2 3-1 2 4 3-1 1-3 4-1 1-3-3-2 1-4-3-2-3 1Z"/><circle cx="12" cy="12" r="3"/></svg></button></nav><dialog id="dialog"><button id="close-dialog" class="icon-button" aria-label="Fechar">×</button><h2 id="dialog-title"></h2><div id="dialog-body"></div></dialog></div><script src="https://cdn.jsdelivr.net/npm/hls.js@1.6.13/dist/hls.min.js"></script><script>    const $ = id => document.getElementById(id);
@@ -100,6 +129,8 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
     let bufferMonitor = null;
     let epgData = new Map();
     let liveEvents = [];
+    let matchCarouselTimer = null;
+    let matchCarouselPausedUntil = 0;
 
     const categories = [
       'Jogos de hoje',
@@ -126,6 +157,255 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
       if (/discovery|animal planet|national geographic|nat geo/.test(n)) return 'Natureza';
       if (/discovery|history|animal planet|food network|gnt|multishow|mtv|tlc|hgtv|master chef|a fazenda|off/.test(n)) return 'Variedades';
       return 'Outros';
+    }
+
+    function parseMatchChannel(channel) {
+      if (categoryOf(channel) !== 'Outros') return null;
+      const match = channel.name.match(/\b([01]?\d|2[0-3]):([0-5]\d)\s*[•·-]\s*(.+?)\s+[xX×]\s+(.+?)(?:\s*[•#]|$)/);
+      if (!match) return null;
+      return { channel, time: `${match[1].padStart(2, '0')}:${match[2]}`, home: match[3].trim(), away: match[4].trim(), minutes: Number(match[1]) * 60 + Number(match[2]) };
+    }
+
+    function normalizeTeamName(value) {
+      let name = (value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+        .replace(/&/g, ' and ').replace(/\b(football club|futebol clube|fc|cf|sc|afc|club)\b/g, ' ')
+        .replace(/[^a-z0-9]+/g, ' ').trim().replace(/\s+/g, ' ');
+      if (/^(psg|paris saint germain)$/.test(name)) return 'psg';
+      if (/^(inter|inter milan|internazionale)$/.test(name)) return 'inter milan';
+      if (/^(atletico mineiro|atletico mg)$/.test(name)) return 'atletico mineiro';
+      if (/^(bayern munchen|bayern munich)$/.test(name)) return 'bayern munich';
+      return name;
+    }
+
+    function leagueNamePtBr(value) {
+      const name = (value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+      if (/brazilian serie a|brasileirao serie a/.test(name)) return 'Brasileirão Série A';
+      if (/brazilian serie b|brasileirao serie b/.test(name)) return 'Brasileirão Série B';
+      if (/premier league/.test(name)) return 'Premier League';
+      if (/la liga|spanish primera|spanish la liga/.test(name)) return 'Campeonato Espanhol';
+      if (/bundesliga|german bundesliga/.test(name)) return 'Campeonato Alemão';
+      if (/serie a italiana|italian serie a/.test(name)) return 'Campeonato Italiano';
+      if (/ligue 1|french ligue/.test(name)) return 'Campeonato Francês';
+      if (/champions league/.test(name)) return 'Liga dos Campeões';
+      if (/conference league/.test(name)) return 'Liga Conferência';
+      if (/copa do brasil|brazilian cup/.test(name)) return 'Copa do Brasil';
+      return value || 'Futebol';
+    }
+
+    function teamNameShort(value) {
+      const key = normalizeTeamName(value);
+      const shortNames = {
+        'psg': 'PSG',
+        'atletico mineiro': 'Atlético-MG',
+        'athletico paranaense': 'Athletico-PR',
+        'manchester city': 'Man. City',
+        'manchester united': 'Man. United',
+        'bayern munich': 'Bayern',
+        'inter milan': 'Inter',
+        'tottenham hotspur': 'Tottenham'
+      };
+      return shortNames[key] || value;
+    }
+
+    function eventChannelFor(event) {
+      const home = normalizeTeamName(event.teams?.home?.name);
+      const away = normalizeTeamName(event.teams?.away?.name);
+      return channels.find(channel => {
+        // Eventos só entram na lista quando há um stream direto correspondente
+        // na lista do provedor. Assim o card nunca abre um canal apenas parecido.
+        if (!channel.stream) return false;
+        const match = parseMatchChannel(channel);
+        if (!match) return false;
+        const channelHome = normalizeTeamName(match.home);
+        const channelAway = normalizeTeamName(match.away);
+        return (home === channelHome && away === channelAway) || (home === channelAway && away === channelHome);
+      }) || null;
+    }
+
+    function eventPlaybackChannel(event, providerChannel = event.sourceChannel) {
+      if (!providerChannel) return null;
+      return {
+        name: event.title || `${event.teams?.home?.name || 'Mandante'} vs ${event.teams?.away?.name || 'Visitante'}`,
+        page: 'event-' + (event.id || event.title),
+        category: 'Jogos de hoje',
+        isEvent: true,
+        providerChannelId: providerChannel.id || '',
+        providerChannel,
+        image: event.league?.image || event.teams?.home?.image || '',
+        embeds: (event.players || []).map((url, i) => ({ label: `Opção ${i + 1}`, url })),
+        stream: providerChannel.stream || ''
+      };
+    }
+
+    function renderMatchBanner() {
+      const banner = $('match-banner');
+      const list = $('match-banner-list');
+      const previousScrollLeft = list.scrollLeft;
+      const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+      const timeParts = new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date());
+      const currentMinutes = Number(timeParts.find(part => part.type === 'hour').value) * 60 + Number(timeParts.find(part => part.type === 'minute').value);
+      const upcoming = liveEvents.map(event => {
+        const sourceChannel = eventChannelFor(event);
+        const match = sourceChannel && parseMatchChannel(sourceChannel);
+        return match ? { event, channel: sourceChannel, ...match, teams: `${event.teams.home.name} x ${event.teams.away.name}` } : null;
+      }).filter(game => game && game.event.date === today && game.minutes + 180 > currentMinutes);
+      banner.hidden = upcoming.length === 0;
+      if (!upcoming.length) { list.replaceChildren(); return; }
+      const brazilianTeams = /flamengo|palmeiras|corinthians|sao paulo|santos|gremio|internacional|fluminense|botafogo|cruzeiro|atletico mineiro|atletico mg|coritiba|bahia|fortaleza|vasco|athletico pr/i;
+      const majorTeams = /real madrid|barcelona|liverpool|manchester (city|united)|arsenal|chelsea|bayern|psg|juventus|inter|milan/i;
+      const importance = game => /flamengo/i.test(game.teams) ? 4 : brazilianTeams.test(normalizeTeamName(game.teams)) ? 3 : majorTeams.test(game.teams) ? 2 : 1;
+      upcoming.sort((a, b) => importance(b) - importance(a) || a.minutes - b.minutes);
+      list.replaceChildren();
+      for (const game of upcoming.slice(0, 4)) {
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'match-banner-card';
+        const meta = document.createElement('div');
+        meta.className = 'match-banner-meta';
+        const league = document.createElement('span');
+        league.className = 'match-banner-league';
+        if (game.event.league?.image) {
+          const leagueLogo = document.createElement('img');
+          leagueLogo.src = game.event.league.image;
+          leagueLogo.alt = '';
+          leagueLogo.loading = 'lazy';
+          leagueLogo.onerror = () => leagueLogo.remove();
+          league.append(leagueLogo);
+        }
+        const leagueName = document.createElement('span');
+        leagueName.textContent = leagueNamePtBr(game.event.league?.name);
+        league.append(leagueName);
+        const time = document.createElement('span');
+        time.className = 'match-banner-time';
+        time.textContent = game.time + ' · HOJE';
+        meta.append(league);
+        const matchup = document.createElement('div');
+        matchup.className = 'match-banner-matchup';
+        const createTeam = team => {
+          const node = document.createElement('div');
+          node.className = 'match-banner-team';
+          if (team.image) {
+            const logo = document.createElement('img');
+            logo.src = team.image;
+            logo.alt = '';
+            logo.loading = 'lazy';
+            logo.onerror = () => logo.remove();
+            node.append(logo);
+          }
+          const name = document.createElement('span');
+          name.textContent = teamNameShort(team.name);
+          node.append(name);
+          return node;
+        };
+        const versus = document.createElement('span');
+        versus.className = 'match-banner-vs';
+        versus.textContent = 'VS';
+        matchup.append(time, createTeam(game.event.teams.home), versus, createTeam(game.event.teams.away));
+        const action = document.createElement('span');
+        action.className = 'match-banner-action';
+        action.textContent = '▶ Assistir agora';
+        card.append(meta, matchup, action);
+        card.onclick = () => {
+          playChannel(eventPlaybackChannel(game.event, game.channel));
+          wakeHud();
+        };
+        list.append(card);
+      }
+      list.scrollLeft = previousScrollLeft;
+    }
+
+    function startMatchBannerCarousel() {
+      const list = $('match-banner-list');
+      if (!list || matchCarouselTimer) return;
+      const pause = () => { matchCarouselPausedUntil = Date.now() + 9000; };
+      list.addEventListener('pointerdown', pause, { passive: true });
+      list.addEventListener('touchstart', pause, { passive: true });
+      list.addEventListener('wheel', pause, { passive: true });
+      list.addEventListener('focusin', pause);
+      let dragStartX = 0;
+      let dragStartScroll = 0;
+      let isMouseDragging = false;
+      let didDrag = false;
+      let suppressClickUntil = 0;
+      list.addEventListener('pointerdown', event => {
+        if (event.pointerType !== 'mouse' || event.button !== 0) return;
+        isMouseDragging = true;
+        didDrag = false;
+        dragStartX = event.clientX;
+        dragStartScroll = list.scrollLeft;
+        list.classList.add('is-dragging');
+      });
+      window.addEventListener('pointermove', event => {
+        if (!isMouseDragging) return;
+        const distance = event.clientX - dragStartX;
+        if (Math.abs(distance) > 4) didDrag = true;
+        if (didDrag) {
+          event.preventDefault();
+          list.scrollLeft = dragStartScroll - distance;
+        }
+      });
+      const endMouseDrag = event => {
+        if (!isMouseDragging) return;
+        isMouseDragging = false;
+        list.classList.remove('is-dragging');
+        if (didDrag) suppressClickUntil = Date.now() + 80;
+        if (event && list.hasPointerCapture(event.pointerId)) list.releasePointerCapture(event.pointerId);
+      };
+      window.addEventListener('pointerup', endMouseDrag);
+      window.addEventListener('pointercancel', endMouseDrag);
+      list.addEventListener('click', event => {
+        if (Date.now() >= suppressClickUntil) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }, true);
+      matchCarouselTimer = setInterval(() => {
+        if ($('match-banner').hidden || document.hidden || Date.now() < matchCarouselPausedUntil) return;
+        const cards = [...list.children];
+        if (cards.length < 2 || list.scrollWidth <= list.clientWidth + 4) return;
+        const styles = getComputedStyle(list);
+        const gap = Number.parseFloat(styles.columnGap) || 0;
+        const step = cards[0].getBoundingClientRect().width + gap;
+        const atEnd = list.scrollLeft + list.clientWidth >= list.scrollWidth - 4;
+        list.scrollTo({ left: atEnd ? 0 : Math.min(list.scrollLeft + step, list.scrollWidth - list.clientWidth), behavior: 'smooth' });
+      }, 4800);
+    }
+
+    function enableMouseDrag(container) {
+      if (!container) return;
+      let dragging = false;
+      let moved = false;
+      let startX = 0;
+      let startScroll = 0;
+      let suppressClickUntil = 0;
+      container.addEventListener('pointerdown', event => {
+        if (event.pointerType !== 'mouse' || event.button !== 0 || container.scrollWidth <= container.clientWidth + 1) return;
+        dragging = true;
+        moved = false;
+        startX = event.clientX;
+        startScroll = container.scrollLeft;
+        container.classList.add('is-dragging');
+      });
+      window.addEventListener('pointermove', event => {
+        if (!dragging) return;
+        const distance = event.clientX - startX;
+        if (Math.abs(distance) > 4) moved = true;
+        if (!moved) return;
+        event.preventDefault();
+        container.scrollLeft = startScroll - distance;
+      });
+      const finishDrag = () => {
+        if (!dragging) return;
+        dragging = false;
+        container.classList.remove('is-dragging');
+        if (moved) suppressClickUntil = Date.now() + 100;
+      };
+      window.addEventListener('pointerup', finishDrag);
+      window.addEventListener('pointercancel', finishDrag);
+      container.addEventListener('click', event => {
+        if (Date.now() >= suppressClickUntil) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }, true);
     }
 
     const epgAliases = Object.freeze({
@@ -430,16 +710,9 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
         $('channels').append(evHeading);
 
         for (const ev of eventMatches) {
-          const pseudo = {
-            name: ev.title,
-            page: 'event-' + (ev.id || ev.title),
-            category: 'Jogos de hoje',
-            isEvent: true,
-            image: ev.league?.image || ev.teams?.home?.image || '',
-            embeds: (ev.players || []).map((url, i) => ({ label: `Opção ${i+1}`, url })),
-            stream: ''
-          };
-          const active = selected && selected.page === pseudo.page;
+          const pseudo = eventPlaybackChannel(ev);
+          if (!pseudo) continue;
+          const active = selected && selected.isEvent && selected.page === pseudo.page;
           const card = document.createElement('article');
           card.className = 'channel-card event-card' + (active ? ' active' : '');
 
@@ -461,7 +734,7 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
           meta.className = 'card-meta';
           const cat = document.createElement('span');
           cat.className = 'card-category';
-          cat.textContent = ev.league?.name || 'Futebol';
+          cat.textContent = leagueNamePtBr(ev.league?.name);
 
           const nowMs = Date.now();
           const startMs = ev.time_start ? new Date(ev.time_start).getTime() : 0;
@@ -1232,13 +1505,14 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
         if (!isCurrent() || failed) return;
         failed = true;
         playbackCleanup();
-        if (!useProxy && !refreshed && c.id && channels.includes(c)) {
+        const providerChannel = channels.includes(c) ? c : c.providerChannel;
+        if (!useProxy && !refreshed && providerChannel?.id) {
           if (spinner) {
             spinner.style.display = 'flex';
             spinnerText.textContent = 'Atualizando sinal...';
           }
           try {
-            const response = await fetch(`/stream?id=${encodeURIComponent(c.id)}`, {
+            const response = await fetch(`/stream?id=${encodeURIComponent(providerChannel.id)}`, {
               cache: 'no-store', signal: AbortSignal.timeout(10000)
             });
             if (!isCurrent()) return;
@@ -1246,6 +1520,7 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
               const data = await response.json();
               if (!isCurrent()) return;
               if (data.url && data.url !== directStream) {
+                providerChannel.stream = data.url;
                 c.stream = data.url;
                 playChannel(c, false, true);
                 return;
@@ -1403,17 +1678,38 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
 
     async function loadEvents() {
       try {
-        const resp = await fetch('./events', { signal: AbortSignal.timeout(6000) });
+        const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+        const resp = await fetch(`./events?date=${today}`, { signal: AbortSignal.timeout(12000) });
         if (!resp.ok) return;
         const data = await resp.json();
         if (Array.isArray(data)) {
-          liveEvents = data;
+          const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+          liveEvents = data.filter(event => event.date === today).map(event => {
+            const sourceChannel = eventChannelFor(event);
+            const match = sourceChannel && parseMatchChannel(sourceChannel);
+            if (!match) return null;
+            const start = new Date(`${event.date}T${match.time}:00-03:00`);
+            return { ...event, sourceChannel, time_start: start.toISOString(), time_end: new Date(start.getTime() + 3 * 60 * 60 * 1000).toISOString() };
+          }).filter(Boolean);
+          renderMatchBanner();
           refreshCategories();
           render();
         }
       } catch (e) {
         console.warn('Não foi possível carregar os eventos no momento.');
       }
+    }
+
+    function scheduleDailyEventsRefresh() {
+      const now = new Date();
+      const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now);
+      const get = type => parts.find(part => part.type === type)?.value;
+      const nextDay = new Date(Date.UTC(Number(get('year')), Number(get('month')) - 1, Number(get('day')) + 1)).toISOString().slice(0, 10);
+      const nextRefresh = Date.parse(`${nextDay}T00:01:00-03:00`);
+      setTimeout(async () => {
+        await loadEvents();
+        scheduleDailyEventsRefresh();
+      }, Math.max(1000, nextRefresh - Date.now()));
     }
 
     async function loadCatalog() {
@@ -1494,7 +1790,10 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
 
     // Atualização periódica do EPG (5 min) e Eventos (3 min)
     setInterval(loadEPG, 300000);
-    setInterval(loadEvents, 180000);
+    scheduleDailyEventsRefresh();
+    startMatchBannerCarousel();
+    enableMouseDrag($('chips'));
+    setInterval(() => { if (channels.length) renderMatchBanner(); }, 60000);
 
     syncAdLocation();
     loadCatalog();

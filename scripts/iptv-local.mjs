@@ -2,7 +2,9 @@ import fs from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
+import { getTodayEvents } from './sports-events.mjs';
 const configPath = new URL('../.iptv-local.json', import.meta.url);
+const cachePath = new URL('../.iptv-cache.m3u', import.meta.url);
 let catalog;
 const resources = new Map();
 function resource(url) {
@@ -16,8 +18,28 @@ function resource(url) {
 }
 async function load() {
   const config = JSON.parse(await fs.readFile(configPath, 'utf8'));
-  const cached = await fs.readFile(new URL('../.iptv-cache.m3u', import.meta.url), 'utf8').catch(() => null);
-  const response = cached ? new Response(cached) : await fetch(config.playlist, { signal: AbortSignal.timeout(60000) });
+  const cacheInfo = await fs.stat(cachePath).catch(() => null);
+  const cacheIsRecent = cacheInfo && Date.now() - cacheInfo.mtimeMs < 4 * 60 * 60 * 1000;
+  let cached = cacheIsRecent ? await fs.readFile(cachePath, 'utf8').catch(() => null) : null;
+  let response;
+  let sourceUpdatedAt = cacheInfo?.mtime || new Date();
+  if (cached) {
+    response = new Response(cached);
+  } else {
+    try {
+      response = await fetch(config.playlist, { signal: AbortSignal.timeout(60000) });
+      if (!response.ok) throw new Error('Lista indisponível: ' + response.status);
+      cached = await response.text();
+      if (!cached.trimStart().startsWith('#EXTM3U')) throw new Error('Resposta não é M3U');
+      await fs.writeFile(cachePath, cached);
+      sourceUpdatedAt = new Date();
+      response = new Response(cached);
+    } catch (error) {
+      cached = await fs.readFile(cachePath, 'utf8').catch(() => null);
+      if (!cached) throw error;
+      response = new Response(cached);
+    }
+  }
   if (!response.ok) throw new Error('Lista indisponível: ' + response.status);
   const text = await response.text();
   if (!text.trimStart().startsWith('#EXTM3U')) throw new Error('Resposta não é M3U');
@@ -34,16 +56,26 @@ async function load() {
     }
   }
   if (!channels.length) throw new Error('Lista sem canais ao vivo');
-  catalog = { retrievedAt: new Date().toISOString(), channels };
+  catalog = { retrievedAt: new Date().toISOString(), scheduleSourceAt: sourceUpdatedAt.toISOString(), channels };
   console.log('IPTV local: ' + channels.length + ' canais carregados');
   return catalog;
 }
 export async function iptvLocal(req, res) {
   const path = new URL(req.url, 'http://localhost').pathname;
   if (!['/iptv/catalog', '/refresh', '/events'].includes(path) && !path.startsWith('/iptv/media/')) return false;
+  if (path === '/events') {
+    try {
+      const events = await getTodayEvents();
+      res.writeHead(200, {'Content-Type':'application/json', 'Cache-Control':'public, max-age=86400'});
+      res.end(JSON.stringify(events));
+    } catch {
+      res.writeHead(502, {'Content-Type':'application/json', 'Cache-Control':'no-store'});
+      res.end('[]');
+    }
+    return true;
+  }
   try { await fs.access(configPath); } catch { return false; }
   try {
-    if (path === '/events') { res.writeHead(200, {'Content-Type':'application/json'}); res.end('[]'); return true; }
     if (path === '/refresh' || path === '/iptv/catalog') {
       if (!catalog || path === '/refresh') await load();
       res.writeHead(200, {'Content-Type':'application/json', 'Cache-Control':'no-store'});
