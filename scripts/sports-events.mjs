@@ -44,13 +44,47 @@ async function loadCompetition(date, [id, name]) {
     }));
 }
 
+async function loadBrazilianSchedule(date) {
+  const url = new URL('https://site.api.espn.com/apis/site/v2/sports/soccer/bra.1/scoreboard');
+  url.searchParams.set('dates', date.replaceAll('-', ''));
+  url.searchParams.set('limit', '100');
+  const response = await fetch(url, { signal: AbortSignal.timeout(9000) });
+  if (!response.ok) throw new Error('Calendário brasileiro indisponível');
+  const data = await response.json();
+  return (Array.isArray(data.events) ? data.events : []).flatMap(event => {
+    const matchDate = new Date(event.date);
+    if (!Number.isFinite(matchDate.getTime()) || new Intl.DateTimeFormat('en-CA', { timeZone:'America/Sao_Paulo', year:'numeric', month:'2-digit', day:'2-digit' }).format(matchDate) !== date) return [];
+    const teams = event.competitions?.[0]?.competitors || [];
+    const home = teams.find(team => team.homeAway === 'home')?.team;
+    const away = teams.find(team => team.homeAway === 'away')?.team;
+    if (!home?.displayName || !away?.displayName) return [];
+    return [{ id:'espn-'+event.id, title:`${home.displayName} vs ${away.displayName}`, date,
+      league:{ name:'Brasileirão Série A', image:data.leagues?.[0]?.logos?.[0]?.href || '' },
+      teams:{ home:{name:home.displayName,image:home.logo || ''}, away:{name:away.displayName,image:away.logo || ''} } }];
+  });
+}
+
+function teamKey(value) {
+  const name = (value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    .replace(/\b(football club|futebol clube|fc|cf|sc|afc|club)\b/g, ' ')
+    .replace(/[^a-z0-9]+/g, ' ').trim().replace(/\s+/g, ' ');
+  if (/^(atletico mineiro|atletico mg)$/.test(name)) return 'atletico mineiro';
+  return name;
+}
+
+function matchKey(event) {
+  return [teamKey(event.teams.home.name), teamKey(event.teams.away.name)].sort().join('|');
+}
+
 export async function getTodayEvents() {
   const date = brazilDate();
   if (cache.date === date && Date.now() < cache.expires) return cache.events;
 
-  const results = await Promise.allSettled(competitions.map(competition => loadCompetition(date, competition)));
+  const results = await Promise.allSettled([...competitions.map(competition => loadCompetition(date, competition)), loadBrazilianSchedule(date)]);
   const events = results.flatMap(result => result.status === 'fulfilled' ? result.value : []);
-  const unique = [...new Map(events.map(event => [event.id, event])).values()];
+  const byMatch = new Map();
+  for (const event of events) if (!byMatch.has(matchKey(event))) byMatch.set(matchKey(event), event);
+  const unique = [...byMatch.values()];
   unique.sort((a, b) => a.league.name.localeCompare(b.league.name, 'pt-BR') || a.title.localeCompare(b.title, 'pt-BR'));
   cache = { date, expires: Date.now() + 26 * 60 * 60 * 1000, events: unique };
   return unique;
