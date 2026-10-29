@@ -20,13 +20,13 @@ test('loads all competitions once per day, includes late matches and retries fai
     await assert.rejects(getTodayEvents());
     fail=false;
     const [events,simultaneous]=await Promise.all([getTodayEvents(),getTodayEvents()]);
-    assert.equal(calls,40,'failed results are retried and concurrent requests share one refresh');
+    assert.equal(calls,44,'failed results are retried and concurrent requests share one refresh');
     assert.deepEqual(events,simultaneous);
     assert.equal(events.length,1,'select matches in the Brasília calendar day');
     assert.equal(events[0].title,'Vasco da Gama vs Flamengo');
     assert.equal(events[0].league.name,'Brasileirão Série A');
     assert.equal(events[0].league.image,'league');
     assert.equal((await getTodayEvents()).length,1);
-    assert.equal(calls,40,'successful data is reused during the day');
+    assert.equal(calls,44,'successful data is reused during the day');
   } finally {globalThis.fetch=originalFetch;}
 });

@@ -2,6 +2,7 @@ const competitions = [
   ['bra.1', 'Brasileirão Série A'],
   ['bra.2', 'Brasileirão Série B'],
   ['eng.1', 'Premier League'],
+  ['eng.league_cup', 'Copa da Liga Inglesa'],
   ['esp.1', 'La Liga'],
   ['ger.1', 'Bundesliga'],
   ['ita.1', 'Serie A Italiana'],
