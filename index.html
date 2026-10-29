@@ -140,7 +140,7 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
       } catch { $('online-count').textContent = '—'; $('online-counter').setAttribute('aria-label','Contagem de visitantes indisponível'); }
     }
     updateOnlineCount();
-    setInterval(updateOnlineCount, 60000);
+    setInterval(updateOnlineCount, 30000);
     let epgData = new Map();
     let liveEvents = [];
     let eventFeed = [];
