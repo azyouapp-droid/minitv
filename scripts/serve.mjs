@@ -2,9 +2,11 @@ import http from 'node:http';
 import app from '../worker/index.js';
 import { iptvLocal } from './iptv-local.mjs';
 import { iptvCloud } from './iptv-cloud.mjs';
+import presence from '../api/presence.js';
 const port = Number(process.env.PORT || 8790);
 http.createServer(async (req, res) => {
   try {
+    if (new URL(req.url,'http://localhost').pathname === '/api/presence') { await presence(req,res); return; }
     if (await iptvCloud(req, res)) return;
     if (await iptvLocal(req, res)) return;
     const chunks = [];
