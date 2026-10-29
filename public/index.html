@@ -161,7 +161,6 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
     }
 
     function parseMatchChannel(channel) {
-      if (categoryOf(channel) !== 'Outros') return null;
       const match = channel.name.match(/\b([01]?\d|2[0-3]):([0-5]\d)\s*[•·-]\s*(.+?)\s+[xX×]\s+(.+?)(?:\s*[•#]|$)/);
       if (!match) return null;
       return { channel, time: `${match[1].padStart(2, '0')}:${match[2]}`, home: match[3].trim(), away: match[4].trim(), minutes: Number(match[1]) * 60 + Number(match[2]) };
