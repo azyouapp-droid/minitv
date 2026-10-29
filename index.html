@@ -212,16 +212,25 @@ html.expanded-page,html.expanded-page body{overflow:hidden!important;overscroll-
     function eventChannelFor(event) {
       const home = normalizeTeamName(event.teams?.home?.name);
       const away = normalizeTeamName(event.teams?.away?.name);
-      return channels.find(channel => {
-        // Eventos só entram na lista quando há um stream direto correspondente
-        // na lista do provedor. Assim o card nunca abre um canal apenas parecido.
-        if (!channel.stream) return false;
+      if (!home || !away) return null;
+      const candidates = channels.filter(channel => channel.stream).map(channel => {
         const match = parseMatchChannel(channel);
-        if (!match) return false;
-        const channelHome = normalizeTeamName(match.home);
-        const channelAway = normalizeTeamName(match.away);
-        return (home === channelHome && away === channelAway) || (home === channelAway && away === channelHome);
-      }) || null;
+        return match && {channel, home:normalizeTeamName(match.home), away:normalizeTeamName(match.away)};
+      }).filter(Boolean);
+      const pairMatches = (candidate, fn) => fn(home, away, candidate.home, candidate.away) || fn(home, away, candidate.away, candidate.home);
+      const exact = candidates.find(candidate => pairMatches(candidate, (a,b,c,d) => a === c && b === d));
+      if (exact) return exact.channel;
+      // Require one exact opponent and a meaningful word shared by the other
+      // team. Reject qualifiers such as women's and youth teams.
+      const qualifiers = value => value.match(/\b(feminino|feminina|women|women s|w|sub ?\d+|u\d+|junior|juniores|reserva|reserves|ii|b)\b/g)?.sort().join('|') || '';
+      const similar = (a,b) => {
+        if (qualifiers(a) !== qualifiers(b)) return false;
+        const words = value => value.split(' ').filter(word => word.length >= 4 && !['club','clube','united','city'].includes(word));
+        return words(a).some(word => words(b).includes(word));
+      };
+      const possible = candidates.filter(candidate => pairMatches(candidate, (a,b,c,d) => (a === c && similar(b,d)) || (b === d && similar(a,c))));
+      const keys = new Set(possible.map(candidate => [candidate.home,candidate.away].sort().join('|')));
+      return keys.size === 1 ? possible[0].channel : null;
     }
 
     function eventPlaybackChannel(event, providerChannel = event.sourceChannel) {
